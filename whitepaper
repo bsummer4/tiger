@@ -20,7 +20,13 @@ Tiger is a programming language and environment that was designed to be
 a simple language to write compilers for.  It was created and introduced
 in the book "Modern Comipler Implementation".  List some alternatives and
 problems with them; Explain why using tiger is a good replacement for those
-alternatives.
+alternatives.  Notes that tiger compilers nicely to C.
+
+## Alternatives
+- Java subset
+- C subset
+- Students design their own language
+- Study some compiler in actualy use.
 
 # Tiger
 Tiger: A simple, simple, simple language that should be easy to extend.

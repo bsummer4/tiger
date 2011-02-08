@@ -10,25 +10,23 @@
 
 signature TABLE = sig
  type key
- type 'a table
- val empty: 'a table
- val enter: 'a table * key * 'a -> 'a table
- val look: 'a table * key -> 'a option
+ type 'a t
+ val empty: 'a t
+ val enter: 'a t * key * 'a -> 'a t
+ val look: 'a t * key -> 'a option
 end
 
 signature SYMBOL = sig
- type 'a table
- eqtype symbol
- val symbol: string -> symbol
- val name: symbol -> string
- val empty: 'a table
- val enter: 'a table * symbol * 'a -> 'a table
- val look: 'a table * symbol -> 'a option
+ structure Table: TABLE
+ eqtype t
+ sharing type t = Table.key
+ val mk: string -> t
+ val name: t -> string
 end
 
 functor IntMapTable (type key val getInt: key -> int): TABLE = struct
- type key=key
- type 'a table = 'a IntBinaryMap.map
+ type key = key
+ type 'a t = 'a IntBinaryMap.map
  val empty = IntBinaryMap.empty
  fun enter(t,k,a) = IntBinaryMap.insert(t,getInt k,a)
  fun look(t,k) = IntBinaryMap.find(t,getInt k)
@@ -36,72 +34,69 @@ end
 
 structure Symbol:> SYMBOL = struct
  structure H = HashTable
- type symbol = string * int
+ type t = string * int
+ structure Table = IntMapTable(type key = t fun getInt(s,n) = n)
  exception Symbol
  val (nextsym, sizeHint) = (ref 0, 128)
  val hashtable: (string,int) H.hash_table =
   H.mkTable(HashString.hashString, op =) (sizeHint,Symbol)
 
  fun name(s,n) = s
- fun symbol name =
+ fun mk name =
   case H.find hashtable name
    of SOME i => (name,i)
     | NONE => let val i = !nextsym
-              in nextsym := i+1;
-                 H.insert hashtable (name,i);
-                 (name,i)
+              in nextsym := i+1
+               ; H.insert hashtable (name,i)
+               ; (name,i)
               end
-
- structure Table = IntMapTable(type key = symbol fun getInt(s,n) = n)
- type 'a table = 'a Table.table
- val (empty,enter,look) = (Table.empty,Table.enter,Table.look)
 end
 
 structure AST = struct
- type pos = int and symbol = Symbol.symbol
- datatype var = SimpleVar of symbol * pos
-              | FieldVar of var * symbol * pos
+ type pos = int and sym = Symbol.t
+ datatype var = SimpleVar of sym * pos
+              | FieldVar of var * sym * pos
               | SubscriptVar of var * exp * pos
 
  and exp = VarExp of var
          | NilExp
          | IntExp of int
          | StringExp of string * pos
-         | CallExp of {func: symbol, args: exp list, pos: pos}
+         | CallExp of {func: sym, args: exp list, pos: pos}
          | OpExp of {left: exp, oper: oper, right: exp, pos: pos}
-         | RecordExp of { fields: (symbol * exp * pos) list
-                        , typ: symbol, pos: pos}
+         | RecordExp of { fields: (sym * exp * pos) list
+                        , typ: sym, pos: pos}
          | SeqExp of (exp * pos) list
          | AssignExp of {var: var, exp: exp, pos: pos}
          | IfExp of {test: exp, then': exp, else': exp option, pos: pos}
          | WhileExp of {test: exp, body: exp, pos: pos}
-         | ForExp of { var: symbol, escape: bool ref
+         | ForExp of { var: sym, escape: bool ref
                      , lo: exp, hi: exp, body: exp, pos: pos }
          | BreakExp of pos
          | LetExp of {decs: dec list, body: exp, pos: pos}
-         | ArrayExp of {typ: symbol, size: exp, init: exp, pos: pos}
+         | ArrayExp of {typ: sym, size: exp, init: exp, pos: pos}
 
  and dec = FunctionDec of fundec list
-         | VarDec of { name: symbol
+         | VarDec of { name: sym
                      , escape: bool ref
-                     , typ: (symbol * pos) option
+                     , typ: (sym * pos) option
                      , init: exp
                      , pos: pos }
-         | TypeDec of {name: symbol, ty: ty, pos: pos} list
+         | TypeDec of {name: sym, ty: ty, pos: pos} list
 
- and ty = NameTy of symbol * pos
+ and ty = NameTy of sym * pos
         | RecordTy of field list
-        | ArrayTy of symbol * pos
+        | ArrayTy of sym * pos
 
  and oper = PlusOp | MinusOp | TimesOp | DivideOp
           | EqOp | NeqOp | LtOp | LeOp | GtOp | GeOp
 
- withtype field = { name: symbol, escape: bool ref
-                  , typ: symbol, pos: pos }
+ withtype field = { name: sym, escape: bool ref
+                  , typ: sym, pos: pos }
 
- and fundec = { name: symbol
+ and fundec = { name: sym
               , params: field list
-              , result: (symbol * pos) option
+              , result: (sym * pos) option
               , body: exp
               , pos: pos }
 
