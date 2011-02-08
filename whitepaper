@@ -14,3 +14,54 @@
 		- Simple semantics
 		- Compiles easily to C.
 		- Lots of room for extensions and optimizations.
+
+# Introduction
+Tiger is a programming language and environment that was designed to be
+a simple language to write compilers for.  It was created and introduced
+in the book "Modern Comipler Implementation".  List some alternatives and
+problems with them; Explain why using tiger is a good replacement for those
+alternatives.
+
+# Tiger
+Tiger: A simple, simple, simple language that should be easy to extend.
+
+One way to characterize a system is with a set of buzzwords. We use a
+standard.
+
+## Simple
+- Tiger is a very simple language
+- Two primitive datatypes (integers, strings)
+	- Enough to write real programs, no complexity
+- Two compound datatypes (arrays, records)
+	- We really need both of these, and they're very simple.
+- Nested declarations of all types
+	- We can add HOFs with no syntactic changes.
+	- Functions are just expressions -- simplifies the syntax.
+- Static, manifest type system
+	- Easy to check static types, no handling of dynamic types.
+- Imperative
+	- Destructive updates
+	- A handful of simple control-flow operators:
+		if-then-else, if-then, while, for
+- Tiny standard library
+	- 10 Functions and 10 operators.
+	- Enough to write programs, and no more.  Allows for basic
+	  integer and string manipulation, and some primitive IO.
+	  This is enough to write many programs, and dead easy to implement.
+
+## Easy to Extend
+The compiler
+
+- Extensions done in the book
+	- Various sophisticated optimizations.
+	- Various types of OO extensions and optimizations.
+	- Various types of FP extensions and optimizations.
+	- Plenty of other extensions are possible.
+		- FFIs
+		- Other optimizations
+		- Dynamic Typing
+
+## Examples
+- Some simple examples of tiger programs.
+	- I should probably write some instead of just using the ones
+	  given in the book.
