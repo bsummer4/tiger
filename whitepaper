@@ -1,73 +1,175 @@
-:NOTES:
-	Some quotes from the book:
-		- "A simple but nontrivial language in the Algol family."
-		- "Nested scope and heap-allocated records."
-		- "Tiger is easily modified to be functional, object-oriented, or both".
-		- "A small language with nested functions, record values with implicit
-		   pointer, array, integer and string variables, and a few simple
-		   structure control constructs."
+# The Tiger Language
+Material for teaching compilers is forced to choose between focusing on
+language design or focusing on compiler implementation.  Asking students
+to design their own language requires significant investment and takes
+a lot of time away from the compiler implementation.  Furthermore,
+students with poor initial designs will end up spending a significant
+amount of time repeatedly redesigning the languages as they come against
+the limitations of their initial designs.  One alternative is to provide
+students with a pre-designed language.  This allows the students to focus
+on compiler implementation, but doesn't completely remove the language
+design aspect from the material.  Students can implement an initial
+compiler for a simple, canned language, then later, design extensions
+for it.  A Language must be carefully designed if it is intended to be
+used in this way.
 
-	- Main Premise: Tiger is a good language for learning to write compilers.
-		- Easy to parse
-		- Easy to learn
-		- Good language for a compilers class.
-		- Simple semantics
-		- Compiles easily to C.
-		- Lots of room for extensions and optimizations.
+Tiger is a programming language that was designed for this purpose
+by Andrew W. Appel.  It was released along with his book, Modern
+Compiler Implementation, as the primary source language.  There are
+actually three books, each with the same material but using different
+implementation languages.  The book focuses on implementing a compiler
+of some sophistication for languages with modern features.
 
-# Introduction
-Tiger is a programming language and environment that was designed to be
-a simple language to write compilers for.  It was created and introduced
-in the book "Modern Comipler Implementation".  List some alternatives and
-problems with them; Explain why using tiger is a good replacement for those
-alternatives.  Notes that tiger compilers nicely to C.
+The book is broken down into two sections.  The first is designed for
+an undergraduate compilers course where students implement a simple
+but complete compiler for Tiger.  The second is designed to focus
+on adding advanced language features and optimizations.  Because of
+this format, Tiger had to be carefully designed to meet both needs.
+Tiger itself only directly fulfills the needs of the first section, but
+it is designed to be easily evolved into a more sophisticated language.
+Specifically, the design of Tiger makes it easy to add functional and
+object-oriented features.
 
-## Alternatives
-- Java subset
-- C subset
-- Students design their own language
-- Study some compiler in actualy use.
+Tiger tries to be simple to implement by supporting only the bare minimum
+set of features required to write realistic programs.  It contains only
+a handful of object types, built-in functions, and control structures.
+There is a primitive, static type system with manifest type declarations.
+Like many languages, primitive objects are passed by value, and compound
+objects, which are always stored on the heap, are passed by reference.
 
-# Tiger
-Tiger: A simple, simple, simple language that should be easy to extend.
+## The Type System
+Tiger's type system is very straightforward to implement.  The overall
+simplicity of the type system makes types easy to verify and makes
+code generation simple.  Manifest type declarations avoid the need
+for complicated type-inference algorithms, while static typing saves
+a lot of trouble outputting switches in the code generation pass.
+Static type systems also make it possible to generate efficient code
+without complicated interprocedural optimizations.
 
-One way to characterize a system is with a set of buzzwords. We use a
-standard.
+## Data Structures and Pointers
+Tiger's heap-allocated arrays and records are necessary for implementing
+data structures such as lists and trees.  Automatic heap management
+also gives compiler-writers an opportunity to learn about the various
+garbage collection techniques.  While Tiger implementations clearly
+must use pointers in their implementation of heap-allocated objects,
+the language does not make pointers first-class.  This makes it possible
+to use precise garbage collection algorithms.  Languages with explicit
+pointer manipulation are forced to use conservative garbage collection
+algorithms which are slower and much more difficult to implement.
 
-## Simple
-- Tiger is a very simple language
-- Two primitive datatypes (integers, strings)
-	- Enough to write real programs, no complexity
-- Two compound datatypes (arrays, records)
-	- We really need both of these, and they're very simple.
-- Nested declarations of all types
-	- We can add HOFs with no syntactic changes.
-	- Functions are just expressions -- simplifies the syntax.
-- Static, manifest type system
-	- Easy to check static types, no handling of dynamic types.
-- Imperative
-	- Destructive updates
-	- A handful of simple control-flow operators:
-		if-then-else, if-then, while, for
-- Tiny standard library
-	- 10 Functions and 10 operators.
-	- Enough to write programs, and no more.  Allows for basic
-	  integer and string manipulation, and some primitive IO.
-	  This is enough to write many programs, and dead easy to implement.
+## Major Extensions
+Tiger's nested functions and heap-allocated records make it easy to
+extend the language with first class functions, objects, and classes.
+First class functions can be added simply by inserting syntax for
+function type declarations and by adding back-end code to handle closures.
+An object is simply a record containing a set of closures and variables,
+while a class need be nothing more than a simple syntactic extension to
+make constructing objects more convenient.  There are several easy ways
+a to handle interface or subclass polymorphism.
 
-## Easy to Extend
-The compiler
+# Appendix
+## Feature Summary
+- \.BI "Types"
+	Ints, strings, records, and arrays.
+- \.BI "Control Flow"
+	If-then-else, if-then, while, and for.
+- \.BI "Operators"
+	+, -, *, /, =, <>, <, >, >=, <=, &, and |
+- \.BI "Standard Library"
+	- function print (s:string)
+	- function printi (i:int)
+	- function flush ()
+	- function getchar () : string
+	- function ord (s:string) : int
+	- function chr (i:int) : string
+	- function size (s:string) : int
+	- function substring (s:string, f:int, n:int) : string
+	- function concat (s1:string, s2:string) : string
+	- function not (i:int) : int
+	- function exit (i:int)
 
-- Extensions done in the book
-	- Various sophisticated optimizations.
-	- Various types of OO extensions and optimizations.
-	- Various types of FP extensions and optimizations.
-	- Plenty of other extensions are possible.
-		- FFIs
-		- Other optimizations
-		- Dynamic Typing
+## Example Programs
+These are copied from the book, Modern Compiler Implementation in ML.
 
-## Examples
-- Some simple examples of tiger programs.
-	- I should probably write some instead of just using the ones
-	  given in the book.
+### The 8-Queens Problem
+| let
+|  var N := 8
+|  type intArray = array of int
+|  var row := intArray [ N ] of 0
+|  var col := intArray [ N ] of 0
+|  var diag1 := intArray [ N+N-1 ] of 0
+|  var diag2 := intArray [ N+N-1 ] of 0
+|
+|  function printboard() =
+|   (for i := 0 to N-1
+|    do (for j := 0 to N-1
+|        do print(if col[i]=j then " O"
+|                 else " .");
+|        print("|n"));
+|    print("|n"))
+|
+|  function try(c:int) =
+|   if c=N then printboard()
+|   else for r := 0 to N-1
+|        do if row[r]=0 & diag1[r+c]=0
+|               & diag2[r+7-c]=0
+|           then (row[r] := 1;
+|                 diag1[r+c] := 1;
+|                 diag2[r+7-c] := 1;
+|                 col[c] := r;
+|                 try(c+1);
+|                 row[r] := 0;
+|                 diag1[r+c] := 0;
+|                 diag2[r+7-c] := 0)
+| in try(0) end
+
+### Merge
+| let
+|  type any = {any : int}
+|  var buffer := getchar()
+|  function readint (any:any) : int =
+|   let var i := 0
+|       function isdigit (s:string) : int =
+|        ord(buffer)>=ord("0") & ord(buffer)<=ord("9")
+|       function skipto () =
+|        while buffer=" " | buffer="|n"
+|        do buffer := getchar()
+|   in skipto();
+|      any.any := isdigit(buffer);
+|      while isdigit(buffer)
+|      do (i := i*10+ord(buffer)-ord("0"); buffer := getchar());
+|      i
+|   end
+|
+|  type list = {first: int, rest: list}
+|  function readlist() : list =
+|   let var any := any{any=0}
+|       var i := readint(any)
+|   in if any.any
+|      then list{first=i,rest=readlist()}
+|      else nil
+|   end
+|
+|  function merge(a: list, b: list) : list =
+|   if a=nil then b
+|   else if b=nil then a
+|   else if a.first < b.first
+|        then list{first=a.first,rest=merge(a.rest,b)}
+|        else list{first=b.first,rest=merge(a,b.rest)}
+|
+|  function printint(i: int) =
+|   let function f(i:int) =
+|        if i>0 then (f(i/10); print(chr(i-i/10*10+ord("0"))))
+|   in if i<0 then (print("-"); f(-i))
+|      else if i>0 then f(i)
+|      else print("0")
+|   end
+|
+|  function printlist(l: list) =
+|   if l=nil then print("|n")
+|   else (printint(l.first); print(" "); printlist(l.rest))
+|
+|  var list1 := readlist()
+|  var list2 := (buffer:=getchar(); readlist())
+| in printlist(merge(list1,list2))
+| end
