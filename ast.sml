@@ -54,178 +54,142 @@ end
 
 structure AST = struct
  type pos = int and sym = Symbol.t
- datatype var = SimpleVar of sym * pos
-              | FieldVar of var * sym * pos
-              | SubscriptVar of var * exp * pos
+ datatype var = SIMPLE of sym * pos
+              | FIELD of var * sym * pos
+              | INDEX of var * exp * pos
 
- and exp = VarExp of var
-         | NilExp
-         | IntExp of int
-         | StringExp of string * pos
-         | CallExp of {func: sym, args: exp list, pos: pos}
-         | OpExp of {left: exp, oper: oper, right: exp, pos: pos}
-         | RecordExp of { fields: (sym * exp * pos) list
-                        , typ: sym, pos: pos}
-         | SeqExp of (exp * pos) list
-         | AssignExp of {var: var, exp: exp, pos: pos}
-         | IfExp of {test: exp, then': exp, else': exp option, pos: pos}
-         | WhileExp of {test: exp, body: exp, pos: pos}
-         | ForExp of { var: sym, escape: bool ref
-                     , lo: exp, hi: exp, body: exp, pos: pos }
-         | BreakExp of pos
-         | LetExp of {decs: dec list, body: exp, pos: pos}
-         | ArrayExp of {typ: sym, size: exp, init: exp, pos: pos}
+ and exp = VAR of var
+         | NIL
+         | INT of int
+         | STR of string * pos
+         | CALL of {func: sym, args: exp list, pos: pos}
+         | OP of {left: exp, oper: oper, right: exp, pos: pos}
+         | REC of { fields: (sym * exp * pos) list
+                  , typ: sym, pos: pos}
+         | SEQ of (exp * pos) list
+         | ASSIGN of {var: var, exp: exp, pos: pos}
+         | IF of {test: exp, then': exp, else': exp option, pos: pos}
+         | WHILE of {test: exp, body: exp, pos: pos}
+         | FOR of { var: sym, esc: bool ref
+                  , lo: exp, hi: exp, body: exp, pos: pos }
+         | BREAK of pos
+         | LET of {decs: dec list, body: exp, pos: pos}
+         | ARRAY of {typ: sym, size: exp, init: exp, pos: pos}
 
- and dec = FunctionDec of fundec list
-         | VarDec of { name: sym
-                     , escape: bool ref
+ and dec = FUN_DEC of fundec list
+         | TYPE_DEC of {name: sym, ty: ty, pos: pos} list
+         | VAR_DEC of { name: sym
+                     , esc: bool ref
                      , typ: (sym * pos) option
                      , init: exp
                      , pos: pos }
-         | TypeDec of {name: sym, ty: ty, pos: pos} list
 
- and ty = NameTy of sym * pos
-        | RecordTy of field list
-        | ArrayTy of sym * pos
-
- and oper = PlusOp | MinusOp | TimesOp | DivideOp
-          | EqOp | NeqOp | LtOp | LeOp | GtOp | GeOp
-
- withtype field = { name: sym, escape: bool ref
-                  , typ: sym, pos: pos }
-
+ and ty = NAME_TY of sym * pos | REC_TY of field list | ARRAY_TY of sym * pos
+ and oper = ADD | SUB | MUL | DIV | EQ | NEQ | LT | LE | GT | GE
+ withtype field = {name: sym, esc: bool ref, typ: sym, pos: pos}
  and fundec = { name: sym
-              , params: field list
+              , args: field list
               , result: (sym * pos) option
               , body: exp
               , pos: pos }
+end
 
 (*
-	:TODO: Less code
-		This is a lot of code;  It can probably be shortened.
+	This is a quick approximation of of an s-expression library.
+	A real version of this library should have pretty-printing
+	and parsing.
 *)
- fun print (out,e0) =
-  let
-   fun say s = TextIO.output(out,s)
-   fun sayln s = (say s; say "\n")
-   fun indent 0 = ()
-     | indent i = (say " "; indent(i-1))
+structure Sexp = struct
+ datatype sexp = SEQ of sexp list | BOOL of bool | SYM of string
+               | STR of string | INT of int
 
-   fun opname PlusOp = "PlusOp" | opname MinusOp = "MinusOp"
-     | opname TimesOp = "TimesOp" | opname DivideOp = "DivideOp"
-     | opname EqOp = "EqOp" | opname NeqOp = "NeqOp"
-     | opname LtOp = "LtOp" | opname LeOp = "LeOp"
-     | opname GtOp = "GtOp" | opname GeOp = "GeOp"
+ local
+  fun w s = TextIO.output (TextIO.stdOut,s)
+  fun printSeq [] = ()
+    | printSeq (x::[]) = print' x
+    | printSeq (x::xs) = (print' x; w " "; printSeq xs)
+  and print' (SEQ l) = (w "("; printSeq l; w ")")
+    | print' (BOOL true) = w "#t"
+    | print' (BOOL false) = w "#f"
+    | print' (SYM s) = w s
+    | print' (STR s) = (w "\""; w s; w "\"")
+    | print' (INT i) = w (Int.toString i)
+ in
+  fun printSexp s = (print' s; w "\n"; TextIO.flushOut TextIO.stdOut)
+ end
+end
 
-  fun dolist d f [a] = (sayln ""; f(a,d+1))
-    | dolist d f (a::r) = (sayln ""; f(a,d+1); say ","; dolist d f r)
-    | dolist d f nil = ()
+structure ASTSexp = struct
+ local
+  structure S = Sexp
+  open AST
+  val name = Symbol.name
 
-  fun var(SimpleVar(s,p),d) =
-       (indent d; say "SimpleVar("; say(Symbol.name s); say ")")
-    | var(FieldVar(v,s,p),d) =
-       ( indent d; sayln "FieldVar("; var(v,d+1); sayln ","
-       ; indent(d+1); say(Symbol.name s); say ")"
-       )
-    | var(SubscriptVar(v,e,p),d) =
-       ( indent d; sayln "SubscriptVar("; var(v,d+1); sayln ","
-       ; exp(e,d+1); say ")"
-       )
+  fun sym s = s
+  val fix = S.SYM o Symbol.name
+  fun sexp s args = S.SEQ (S.SYM s::args)
+  fun opname oper = case oper
+     of ADD => "+" | SUB => "-" | MUL => "*" | DIV => "/" | EQ => "=" 
+      | NEQ => "<>" | LT => "<" | LE => "<=" | GT => ">" | GE => ">="
 
-  and exp(VarExp v, d) = (indent d; sayln "VarExp("; var(v,d+1); say ")")
-    | exp(NilExp, d) = (indent d; say "NilExp")
-    | exp(IntExp i, d) =
-       (indent d; say "IntExp("; say(Int.toString i); say ")")
-    | exp(StringExp(s,p),d) =
-       (indent d; say "StringExp(\""; say s; say "\")")
-    | exp(CallExp{func,args,pos},d) =
-       (indent d; say "CallExp("; say(Symbol.name func);
-        say ",["; dolist d exp args; say "])")
-    | exp(OpExp{left,oper,right,pos},d) =
-       (indent d; say "OpExp("; say(opname oper); sayln ",";
-         exp(left,d+1); sayln ","; exp(right,d+1); say ")")
+  fun var (SIMPLE(s,_)) = sexp "simple-var" [fix s]
+    | var (FIELD(v,s,_)) = sexp "field-var" [var v, fix s]
+    | var (INDEX(v,e,_)) = sexp "subscript-var" [var v, exp e]
 
-    | exp(RecordExp{fields,typ,pos},d) =
-       let fun f((name,e,pos),d) =
-            ( indent d; say "("; say(Symbol.name name)
-            ; sayln ","; exp(e,d+1)
-            ; say ")")
-       in indent d; say "RecordExp("; say(Symbol.name typ);
-          sayln ",["; dolist d f fields; say "])"
-      end
-    | exp(SeqExp l, d) = ( indent d; say "SeqExp["
-                           ; dolist d exp (map #1 l); say "]" )
-    | exp(AssignExp{var=v,exp=e,pos},d) =
-       (indent d; sayln "AssignExp("; var(v,d+1); sayln ",";
-        exp(e,d+1); say ")")
-    | exp(IfExp{test,then',else',pos},d) =
-       ( indent d; sayln "IfExp("; exp(test,d+1); sayln ","
-       ; exp(then',d+1)
-       ; case else' of NONE => ()
-                     | SOME e => (sayln ","; exp(e,d+1))
-       ; say ")" )
-
-    | exp(WhileExp{test,body,pos},d) =
-       (indent d; sayln "WhileExp("; exp(test,d+1); sayln ",";
-        exp(body,d+1); say ")")
-    | exp(ForExp{var=v,escape=b,lo,hi,body,pos},d) =
-       (indent d; sayln "ForExp(";
-        say(Symbol.name v); say ","; say(Bool.toString (!b)); sayln ",";
-        exp(lo,d+1); sayln ","; exp(hi,d+1); sayln ",";
-        exp(body,d+1); say ")")
-    | exp(BreakExp p, d) = (indent d; say "BreakExp")
-    | exp(LetExp{decs,body,pos},d) =
-       (indent d; say "LetExp([";
-        dolist d dec decs; sayln "],"; exp(body,d+1); say")")
-    | exp(ArrayExp{typ,size,init,pos},d) =
-       (indent d; say "ArrayExp("; say(Symbol.name typ); sayln ",";
-        exp(size,d+1); sayln ","; exp(init,d+1); say ")")
-
-  and dec(FunctionDec l, d) =
-       let fun field({name,escape,typ,pos},d) =
-            ( indent d; say "("; say(Symbol.name name)
-            ; say ","; say(Bool.toString(!escape))
-            ; say ","; say(Symbol.name typ); say ")"
-            )
-           fun f({name,params,result,body,pos},d) =
-            ( indent d; say "("; say (Symbol.name name); say ",["
-            ; dolist d field params; sayln "],"
-            ; case result of NONE => say "NONE"
-                   | SOME(s,_) => (say "SOME("; say(Symbol.name s); say ")")
-            ; sayln ","; exp(body,d+1); say ")"
-            )
-       in indent d; say "FunctionDec["; dolist d f l; say "]"
+  and exp (VAR v) = sexp "var" [var v]
+    | exp NIL = S.SYM "nil"
+    | exp (INT i) = sexp "int" [S.INT i]
+    | exp (STR(s,_)) = sexp "string" [S.STR s]
+    | exp (CALL{func,args,pos}) =
+       sexp "call" (fix func::map exp args)
+    | exp (OP{left,oper,right,pos}) =
+      sexp "op" [S.SYM(opname oper), exp left, exp right]
+    | exp (REC{fields,typ,pos}) =
+       let fun f (name,e,_) = S.SEQ[fix name, exp e]
+       in sexp "record" (fix typ::map f fields)
        end
 
-    | dec(VarDec{name,escape,typ,init,pos},d) =
-       ( indent d; say "VarDec("; say(Symbol.name name); say ","
-       ; say(Bool.toString (!escape)); say ","
-       ; case typ of NONE => say "NONE"
-                   | SOME(s,p) => (say "SOME("; say(Symbol.name s); say ")")
-       ; sayln ","; exp(init,d+1); say ")"
-       )
+    | exp (SEQ l) = sexp "seq" (map (exp o #1) l)
+    | exp (ASSIGN{var=v,exp=e,pos}) = sexp "assign" [var v, exp e]
+    | exp (IF{test,then',else',pos}) =
+       (case else' of NONE => sexp "if" [exp test, exp then']
+                    | (SOME e) => sexp "if" [exp test, exp then', exp e])
+    | exp (WHILE{test,body,pos}) = sexp "while" [exp body]
+    | exp (FOR{var=v,esc=b,lo,hi,body,pos}) =
+       sexp "for" [fix v, S.BOOL(!b), exp lo, exp hi, exp body]
+    | exp (BREAK p) = S.SEQ [S.SYM "break"]
+    | exp (LET{decs,body,pos}) =
+       sexp "let" [S.SEQ(map dec decs), exp body]
+    | exp (ARRAY{typ,size,init,pos}) =
+       sexp "array" [fix typ, exp size, exp init]
 
-    | dec(TypeDec l, d) =
-       let fun tdec({name,ty=t,pos},d) = ( indent d; say"("
-                                         ; say(Symbol.name name); sayln ","
-                                         ; ty(t,d+1); say ")"
-                                         )
-       in indent d; say "TypeDec["; dolist d tdec l; say "]"
-       end
+   and dec (FUN_DEC l) =
+        let fun field{name,esc,typ,pos} =
+             S.SEQ [fix name, S.BOOL(!esc), fix typ]
+            fun f{name,args,result,body,pos} =
+             case result
+              of NONE => S.SEQ [fix name, S.SEQ(map field args), exp body]
+               | SOME(s,_) =>
+                  S.SEQ [fix name, fix s, S.SEQ(map field args), exp body]
+        in sexp "fun" (map f l) end
+     | dec (VAR_DEC{name,esc,typ,init,pos}) =
+        (case typ
+          of NONE => sexp "var" [fix name, S.BOOL(!esc), exp init]
+           | (SOME(s,_)) =>
+              sexp "var" [fix name, S.BOOL(!esc), fix s, exp init])
+     | dec (TYPE_DEC l) =
+        let fun tdec{name,ty=t,pos} = S.SEQ [fix name, ty t]
+        in sexp "type" (map tdec l) end
 
-  and ty(NameTy(s,p), d) =
-       (indent d; say "NameTy("; say(Symbol.name s); say ")")
-    | ty(RecordTy l, d) =
-       let fun f({name,escape,typ,pos},d) =
-            ( indent d; say "("; say (Symbol.name name)
-            ; say ","; say (Bool.toString (!escape)); say ","
-            ; say (Symbol.name typ); say ")"
-            )
-       in indent d; say "RecordTy["; dolist d f l; say "]"
-       end
-    | ty(ArrayTy(s,p),d) =
-       (indent d; say "ArrayTy("; say(Symbol.name s); say ")")
+   and ty (NAME_TY(s,p)) = sexp "name-type" [fix s]
+     | ty (REC_TY l) =
+        let fun f {name,esc,typ,pos} =
+             S.SEQ[fix name, S.BOOL(!esc), fix typ]
+        in sexp "record-type" (map f l) end
+     | ty(ARRAY_TY(s,p)) = sexp "array-type" [fix s]
 
- in exp(e0,0); sayln ""; TextIO.flushOut out
+  fun unexp (e: Sexp.sexp) = NIL
+ in val toSexp = exp
+    val fromSexp = unexp
  end
 end
