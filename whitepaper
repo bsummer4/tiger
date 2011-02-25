@@ -67,15 +67,40 @@ while a class need be nothing more than a simple syntactic extension to
 make constructing objects more convenient.  There are several easy ways
 a to handle interface or subclass polymorphism.
 
-# Appendix
+# Class Project
+For our project, we will attempt to build a Tiger compiler
+that compiles to C and to x86.  We'd also like to implement some
+extensions: higher-order functions, region-based memory manegement,
+a foreign-function-interface, and optional dynamic typing.  We want to
+support compiling to C and to x86.
+
+Region-based memory management is an optimization;  It doesn't change
+the languages  The foreign-function interface would parse C header
+files, and make defined functions callable in the global namespace.
+Higher-order functions means that you may pass and return functions.
+Here is an example that uses higher-order-functions and dynamic-typing
+For example, this evaluates to 3:
+
+| let
+|  type icons = int -> dyn
+|  function icons (car: dyn, cdr: dyn) : icons =
+|   let function hof (int choice) = if (choice) then car else cdr
+|   in hof
+|   end
+|  function car (pair: icons) : dyn = icons(1)
+|  function cdr (pair: icons) : dyn = icons(0)
+| in int(car(cons(dyn(3),dyn(4))))
+| end
+
+# Features and Examples
 ## Feature Summary
-- \.BI "Types"
+- Types
 	Ints, strings, records, and arrays.
-- \.BI "Control Flow"
+- Control Flow
 	If-then-else, if-then, while, and for.
-- \.BI "Operators"
+- Operators
 	+, -, *, /, =, <>, <, >, >=, <=, &, and |
-- \.BI "Standard Library"
+- Standard Library
 	- function print (s:string)
 	- function printi (i:int)
 	- function flush ()
@@ -105,8 +130,8 @@ These are copied from the book, Modern Compiler Implementation in ML.
 |    do (for j := 0 to N-1
 |        do print(if col[i]=j then " O"
 |                 else " .");
-|        print("|n"));
-|    print("|n"))
+|        print("\n"));
+|    print("\n"))
 |
 |  function try(c:int) =
 |   if c=N then printboard()
@@ -132,7 +157,7 @@ These are copied from the book, Modern Compiler Implementation in ML.
 |       function isdigit (s:string) : int =
 |        ord(buffer)>=ord("0") & ord(buffer)<=ord("9")
 |       function skipto () =
-|        while buffer=" " | buffer="|n"
+|        while buffer=" " | buffer="\n"
 |        do buffer := getchar()
 |   in skipto();
 |      any.any := isdigit(buffer);
@@ -166,7 +191,7 @@ These are copied from the book, Modern Compiler Implementation in ML.
 |   end
 |
 |  function printlist(l: list) =
-|   if l=nil then print("|n")
+|   if l=nil then print("\n")
 |   else (printint(l.first); print(" "); printlist(l.rest))
 |
 |  var list1 := readlist()
