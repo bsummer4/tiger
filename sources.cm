@@ -1,0 +1,15 @@
+Group is
+
+#if defined (NEW_CM)
+  $/smlnj-lib.cm
+  $/basis.cm
+  $/ml-yacc-lib.cm
+#else
+  ml-yacc-lib.cm
+#endif
+  ast.sml
+  tiger.grm.sml
+  tiger.grm.sig
+  tiger.lex.sml
+  parser.sml
+

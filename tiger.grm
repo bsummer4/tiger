@@ -1,0 +1,21 @@
+(* tiger.grm *)
+
+open AST;
+open Symbol;
+
+%%
+
+%name Tiger
+%eop EOF
+%pos int
+%noshift EOF
+%start prog
+%verbose 
+
+%term terminals
+
+%nonterm prog of exp
+
+%%
+
+prog : exp (exp)
