@@ -17,7 +17,6 @@ ways:
     of the arguments. For example, in the substring function, I  assume
     "n" is the number of characters to extract, but I'm not sure.
 
-
 .4. I am not very familiar with ML syntax and neither would be most
     readers. Hence, before presenting your examples, you need to walk a
     reader through small snippets of code and explain what they do. For

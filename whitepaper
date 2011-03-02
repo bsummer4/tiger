@@ -75,7 +75,7 @@ a foreign-function-interface, and optional dynamic typing.  We want to
 support compiling to C and to x86.
 
 Region-based memory management is an optimization;  It doesn't change
-the languages  The foreign-function interface would parse C header
+the language.  The foreign-function interface would parse C header
 files, and make defined functions callable in the global namespace.
 Higher-order functions means that you may pass and return functions.
 Here is an example that uses higher-order-functions and dynamic-typing
@@ -92,29 +92,71 @@ For example, this evaluates to 3:
 | in int(car(cons(dyn(3),dyn(4))))
 | end
 
-# Features and Examples
+:TODO: Simple examples with explainations
+
+# Summary of Features
 ## Feature Summary
-- Types
-	Ints, strings, records, and arrays.
-- Control Flow
-	If-then-else, if-then, while, and for.
-- Operators
-	+, -, *, /, =, <>, <, >, >=, <=, &, and |
+Tiger has integers, strings, records, and arrays.
+
+Tiger has four types of control flow.  'if' comes in two forms; the else
+may be ommited or not.  If there is an else clause, then the 'if' form
+returns a value ant the two branches must have matching types.   If the
+else is ommited, then the expression doesn't return a value.
+
+| x := if 3-4 then 3 else 4;
+| if x then print ("3-3!")
+
+'while' loops work the way you'd expect, and 'for' loops over a range
+of integers.
+
+| while not("!"=getchar()) do print(".")
+| for (i := 0 to N) do (printi(i); print("\n"))
+
+semicolons work the same way as comma in c except chains of
+expressions must be parenthisised:
+
+	| x := (printi 4; 3)
+
+Operators: +, -, *, /, =, <>, <, >, >=, <=, &, and |
+
+	All of these work the same as in c except <> means !=, & means &&
+	and | means ||.
+
 - Standard Library
 	- function print (s:string)
 	- function printi (i:int)
 	- function flush ()
 	- function getchar () : string
+		read a character
+
 	- function ord (s:string) : int
+		Returns the integer value of the first character in
+		strings s.
+
 	- function chr (i:int) : string
+		Returns the character represented by character code i.
+
 	- function size (s:string) : int
+		The length of a string
+
 	- function substring (s:string, f:int, n:int) : string
+		f is the index of the first character to include.
+		n is the number of characters to include.
+
 	- function concat (s1:string, s2:string) : string
+		Returns the concatenation of strings s1 and s2.
+
 	- function not (i:int) : int
+		if 0 = i then 1 else 0
+
 	- function exit (i:int)
+		Exits the program with error code i.
 
 ## Example Programs
 These are copied from the book, Modern Compiler Implementation in ML.
+
+### Hello World
+| print "Hello World\n";
 
 ### The 8-Queens Problem
 | let
