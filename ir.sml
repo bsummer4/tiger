@@ -17,18 +17,25 @@ end
 
 signature IR = sig
  type proc and var
- datatype varExp = LOCAL of int | GLOBAL of int | FIELD of varExp * int
+ datatype varExp = LOCAL of int | GLOBAL of var | FIELD of varExp * int
                  | INDEX of varExp * exp
  and oper = ADD | SUB | MUL | DIV | EQ | NEQ | LT | LE | GT | GE
- and stmt = ASSIGN of var * exp | IF of exp * exp * exp
+ and stmt = ASSIGN of varExp * exp | IF of exp * exp * exp
           | WHILE of exp * exp list | FOR of (exp * exp * exp) * exp list
           | BREAK | RETURN of exp option | EXP of exp | NIL
- and exp = VAR of var | INT of int | STR of string
-         | CALL of int * exp list | OP of exp * oper * exp
+ and exp = VAR of varExp | INT of int | STR of string
+         | CALL of proc * exp list | OP of exp * oper * exp
  type program and code = stmt list and procData = Type.t list * code
+ val empty: program
  val decVar: program -> Type.t -> (program * var)
  val decProc: program -> Type.proc -> (program * proc)
  val defProc: program -> (proc * procData) -> program
+ val vars: program -> var list
+ val var: program -> var -> Type.t
+ val varNum: program -> var -> int
+ val procs: program -> proc list
+ val proc: program -> proc -> Type.proc * procData option
+ val procNum: program -> proc -> int
 end
 
 structure IR : IR = struct
@@ -39,14 +46,14 @@ structure IR : IR = struct
  end)
 
  type proc = unique and var = unique
- datatype varExp = LOCAL of int | GLOBAL of int | FIELD of varExp * int
+ datatype varExp = LOCAL of int | GLOBAL of var | FIELD of varExp * int
                  | INDEX of varExp * exp
  and oper = ADD | SUB | MUL | DIV | EQ | NEQ | LT | LE | GT | GE
- and stmt = ASSIGN of var * exp | IF of exp * exp * exp
+ and stmt = ASSIGN of varExp * exp | IF of exp * exp * exp
           | WHILE of exp * exp list | FOR of (exp * exp * exp) * exp list
           | BREAK | RETURN of exp option | EXP of exp | NIL
- and exp = VAR of var | INT of int | STR of string
-         | CALL of int * exp list | OP of exp * oper * exp
+ and exp = VAR of varExp | INT of int | STR of string
+         | CALL of proc * exp list | OP of exp * oper * exp
 
  type code = stmt list
  type procData = Type.t list * code
@@ -54,6 +61,8 @@ structure IR : IR = struct
  type program = { procs: (Type.proc * procData option) map
                 , globals: Type.t map
                 , next: int }
+
+ val empty = {procs=Map.empty, globals=Map.empty, next=0}
 
  fun decVar {globals,next,procs} ty =
   let val v = (ref(),next)
@@ -71,13 +80,21 @@ structure IR : IR = struct
     | (SOME(ty,NONE)) => { globals=globals, next=next+1
                          , procs=Map.insert(procs,proc,(ty,SOME data)) }
     | (SOME _) => raise Fail "You may only define procedures once"
+
+ fun procs (p:program) = map #1 (Map.listItemsi (#procs p))
+ fun vars (p:program) = map #1 (Map.listItemsi (#globals p))
+ fun proc (p:program) f = valOf (Map.find(#procs p,f))
+ fun var (p:program) v = valOf (Map.find(#globals p,v))
+ fun varNum p (_,i) = i
+ fun procNum p (_,i) = i
 end
 
 structure CG = struct
  exception WTF
+ open TextIO
  open IR
  open Type
- fun w s = TextIO.output (TextIO.stdOut, s)
+ fun w s = output(stdOut,s)
 
  val letters = "abcdefghijklmnopqrstuvwxyz";
  fun name i =
@@ -99,10 +116,31 @@ structure CG = struct
  val dumpVars = decls ("l_",";")
  val dumpGlobs = decls ("g_",";")
 
- fun renderStmt s = ( case s of BREAK => w "break" | _ => (); w ";" )
+ fun renderExp a = ();
+ fun renderStmt s =
+  case s of BREAK => w "break;"
+          | (RETURN NONE) => w "return;"
+          | (RETURN (SOME e)) => (w "return "; renderExp e; w ";")
+          | (EXP e) => (renderExp e; w ";")
+          | NIL => ()
+          | _ => ()
+
  fun renderBlock stmts = ( w "{"; app renderStmt stmts; w "}" )
 
  fun renderFun ty id args vars code =
-  ( dumpType ty; w " "; w ("f_"^(name id)); w "("; dumpArgs args
+  ( dumpType ty; w " "; w ("f_"^(name id)); w "("; dumpArgs args; w ")"
   ; renderBlock code )
+
+ fun renderProc p proc =
+  let val id = IR.procNum p proc
+      val ((ty,args),SOME (vars,code)) = IR.proc p proc
+  in renderFun ty id args vars code
+  end
+
+ fun generate p main =
+  ( dumpGlobs (map (IR.var p) (IR.vars p)); w "\n"
+  ; renderProc p main; w "\n"
+  ; app w ["int main(){f_", name (IR.procNum p main), "();}\n"]
+  ; flushOut stdOut
+  )
 end
