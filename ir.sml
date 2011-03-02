@@ -20,12 +20,13 @@ signature IR = sig
  datatype varExp = LOCAL of int | GLOBAL of var | FIELD of varExp * int
                  | INDEX of varExp * exp
  and oper = ADD | SUB | MUL | DIV | EQ | NEQ | LT | LE | GT | GE
- and stmt = ASSIGN of varExp * exp | IF of exp * exp * exp
-          | WHILE of exp * exp list | FOR of (exp * exp * exp) * exp list
+ and stmt = ASSIGN of varExp * exp | IF of exp * block * block
+          | WHILE of exp * block | FOR of (exp * exp * exp) * block
           | BREAK | RETURN of exp option | EXP of exp | NIL
  and exp = VAR of varExp | INT of int | STR of string
          | CALL of proc * exp list | OP of exp * oper * exp
- type program and code = stmt list and procData = Type.t list * code
+ withtype block = stmt list
+ type program and procData = Type.t list * block
  val empty: program
  val decVar: program -> Type.t -> (program * var)
  val decProc: program -> Type.proc -> (program * proc)
@@ -49,14 +50,14 @@ structure IR : IR = struct
  datatype varExp = LOCAL of int | GLOBAL of var | FIELD of varExp * int
                  | INDEX of varExp * exp
  and oper = ADD | SUB | MUL | DIV | EQ | NEQ | LT | LE | GT | GE
- and stmt = ASSIGN of varExp * exp | IF of exp * exp * exp
-          | WHILE of exp * exp list | FOR of (exp * exp * exp) * exp list
+ and stmt = ASSIGN of varExp * exp | IF of exp * block * block
+          | WHILE of exp * block | FOR of (exp * exp * exp) * block
           | BREAK | RETURN of exp option | EXP of exp | NIL
  and exp = VAR of varExp | INT of int | STR of string
          | CALL of proc * exp list | OP of exp * oper * exp
 
- type code = stmt list
- type procData = Type.t list * code
+ withtype block = stmt list
+ type procData = Type.t list * block
  type 'a map = 'a Map.map
  type program = { procs: (Type.proc * procData option) map
                 , globals: Type.t map
@@ -93,8 +94,9 @@ structure CG = struct
  exception WTF
  open TextIO
  open IR
- open Type
  fun w s = output(stdOut,s)
+
+ fun TODO() = raise Fail "Not Implemented"
 
  val letters = "abcdefghijklmnopqrstuvwxyz";
  fun name i =
@@ -107,29 +109,40 @@ structure CG = struct
  and decls (pre,sep) vars =
   ListPair.app (fn(t,i)=>(decl pre (t,i); w sep)) (vars, range(length vars))
  and dumpType t =
-  case t
-   of VOID => w "void" | INT => w "int" | STRING => w "char*"
-    | RECORD(slots) => (w "struct {"; decls ("",";") slots; w "}")
-    | (ARRAY t) => (dumpType t; w "*")
+  let open Type
+  in case t
+      of VOID => w "void" | INT => w "int" | STRING => w "char*"
+       | RECORD slots => (w "struct {"; decls ("",";") slots; w "}")
+       | ARRAY t => (dumpType t; w "*")
+       | PROC (r,args) => TODO()
+  end
 
  val dumpArgs = decls ("a_",",")
  val dumpVars = decls ("l_",";")
  val dumpGlobs = decls ("g_",";")
 
- fun renderExp a = ();
- fun renderStmt s =
-  case s of BREAK => w "break;"
-          | (RETURN NONE) => w "return;"
-          | (RETURN (SOME e)) => (w "return "; renderExp e; w ";")
-          | (EXP e) => (renderExp e; w ";")
-          | NIL => ()
-          | _ => ()
+ fun block stmts = ( w "{"; app stmt stmts; w "}" )
 
- fun renderBlock stmts = ( w "{"; app renderStmt stmts; w "}" )
+ and exp (INT i) = w (Int.toString i)
+   | exp (STR s) = (w "\""; w s; w "\"")
+   | exp _ = TODO()
+ and var a = TODO()
+ and stmt s =
+  case s of BREAK => w "break;"
+          | RETURN NONE => w "return;"
+          | RETURN(SOME e) => (w "return "; exp e; w ";")
+          | EXP e => (exp e; w ";")
+          | ASSIGN(v,e) => (var v; w "="; exp; w ";")
+          | IF (i,t,e) => (w "if ("; exp i; w ")"; block t; block e)
+          | WHILE (i,b) => (w "while ("; exp i; w ")"; block b)
+          | FOR ((i,c,n),b) =>
+             (w "for ("; exp i; w ";"; exp c; w ";"; exp n; w ")"; block b)
+          | NIL => ()
 
  fun renderFun ty id args vars code =
   ( dumpType ty; w " "; w ("f_"^(name id)); w "("; dumpArgs args; w ")"
-  ; renderBlock code )
+  ; w "{" ; dumpVars vars; block code ; w "}"
+  )
 
  fun renderProc p proc =
   let val id = IR.procNum p proc
