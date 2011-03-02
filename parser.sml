@@ -33,7 +33,7 @@ struct
   fun invoke lexstream =
       let fun print_error (s,i:int,_) =
 	      TextIO.output(TextIO.stdOut,
-			    "Error, line " ^ (Int.toString i) ^ ", " ^ s ^ "\n")
+			    "Error, char " ^ (Int.toString i) ^ ", " ^ s ^ "\n")
        in TigerParser.parse(0,lexstream,print_error,())
       end
 
@@ -51,8 +51,7 @@ struct
           in
             val lexer = TigerParser.makeLexer getStdIn
           end
-	  val dummyEOF = TigerLrVals.Tokens.EOF(0,0)
-	  val dummySEMI = TigerLrVals.Tokens.SEMI(0,0)
+	  val dummyEOF = TigerLrVals.Tokens.Eof(0,0)
 	  fun loop lexer =
 	      let val (result,lexer) = invoke lexer
 		  val (nextToken,lexer) = TigerParser.Stream.get lexer

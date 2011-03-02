@@ -3,5 +3,4 @@ all:
 	mlyacc tiger.grm
 
 clean:
-	rm -f *.grm.*
-	rm -f *.lex.*
+	rm -rf *.grm.* *.lex.* .cm

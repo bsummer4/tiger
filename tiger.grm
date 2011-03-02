@@ -6,16 +6,30 @@ open Symbol;
 %%
 
 %name Tiger
-%eop EOF
+%eop Eof
 %pos int
-%noshift EOF
+%noshift Eof
 %start prog
 %verbose 
 
-%term terminals
+%term Eof | String of string | Integer of int | ID of string
+    | Comma | Colon | Semi | Lparen | Rparen | Lbrak | Rbrak | Lbrace | Rbrace
+    | Dot | Plus | Minus | Mult | Div | Eq | Neq | Lt | Leq | Gt | Geq | And
+    | Or | Assign | Array | If | Then | Else | While | For | To | Do | Let
+    | In | End | Of | Break | Nil | Fun | Var | Type
 
-%nonterm prog of exp
+%nonterm prog of exp 
+       | exp of exp 
+       | const of exp
+       | string of exp
+       | number of exp
 
 %%
 
 prog : exp (exp)
+
+exp : const (const)
+
+const : String (STR(String,0))
+      | Integer (INT Integer)
+      | Nil (NIL)
