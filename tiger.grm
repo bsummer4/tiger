@@ -2,6 +2,50 @@
 
 open AST;
 open Symbol;
+
+datatype tvars = TFIELD of sym * pos | TINDEX of exp * pos;
+type tvar = (sym * pos) * tvars list;
+
+fun newop     (e1,oper,e2,pos) = OP {left=e1, oper=oper, right=e2, pos=pos}
+fun newwhile  (t,b,pos) = WHILE {test=t, body=b, pos=pos}
+fun newif     (c,t,e,pos) = IF {test=c, then'=t, else'=e, pos=pos}
+fun newfor    (v,l,h,b,pos) = FOR {var=v,esc=ref false,lo=l,hi=h,body=b,pos=pos}
+fun newrec    (t,f,pos) = REC {typ=t, fields=f, pos=pos}
+fun newcall   (f,a,pos) = CALL {func=f, args=a, pos=pos}
+fun newarray  (t,s,i,pos) = ARRAY {typ=t, size=s, init=i, pos=pos}
+fun newassign (v,e,pos) = ASSIGN {var=v, exp=e, pos=pos}
+fun newlet    (d,b,pos) = LET {decs=d, body=b, pos=pos}
+
+fun newvar    ((s,p),ts) = 
+  let
+    fun r (acc, []) = acc
+      | r (acc, t::ts) =
+          case t
+          of TFIELD(s,pos) => r (FIELD(acc,s,pos),ts)
+          |  TINDEX(e,pos) => r (INDEX(acc,e,pos),ts)
+  in
+    r (SIMPLE(s,p),ts)
+  end
+
+fun newdec [] = []
+  | newdec (d::l) =
+      (case d 
+         of FUN_DEC(_)  => fdec ([],d::l)
+         |  TYPE_DEC(_) => tdec ([],d::l)
+         |  VAR_DEC(_)  => d::(newdec l))
+
+and fdec (fs,[])   = [FUN_DEC(fs)]
+  | fdec (fs,d::l) =
+      (case d
+         of FUN_DEC(fr) => fdec((hd fr)::fs,l)
+         |  _ => FUN_DEC(fs)::(newdec (d::l)))
+
+and tdec (ts,[])   = [TYPE_DEC(ts)]
+  | tdec (ts,d::l) =
+      (case d
+         of TYPE_DEC(tr) => tdec((hd tr)::ts,l)
+         |  _ => TYPE_DEC(ts)::(newdec (d::l)))
+
 %%
 
 %name Tiger
@@ -11,14 +55,27 @@ open Symbol;
 %start prog
 %verbose 
 
-%nonassoc If
+(* low precedence *)
+
+%nonassoc Do If Of
 %nonassoc Else
+
+%nonassoc Assign
+%nonassoc And Or
+%nonassoc Eq Neq Lt Le Gt Ge
+
+%left Add Sub
+%left Mul Div
+
+%nonassoc Umin
+
+(* high precedence *)
 
 %term Eof | String of string | Integer of int | Id of string
     | Comma | Colon | Semi | Lparen | Rparen | Lbrak | Rbrak | Lbrace | Rbrace
-    | Dot | Plus | Minus | Mult | Div | Eq | Neq | Lt | Leq | Gt | Geq | And
+    | Dot | Add | Sub | Mul | Div | Eq | Neq | Lt | Le | Gt | Ge | And
     | Or | Assign | Array | If | Then | Else | While | For | To | Do | Let
-    | In | End | Of | Break | Nil | Fun | Var | Type
+    | In | End | Of | Break | Nil | Fun | Var | Type | Umin
 
 %nonterm prog of exp 
        | exp of exp 
@@ -31,7 +88,13 @@ open Symbol;
        | args of exp list
        | record of exp
        | fields of (sym * exp * pos) list
+       | opexp of exp
        | flow of exp
+       | lval of exp
+       | array of exp
+       | assign of exp
+       | var of var
+       | optvar of tvars list
 
 %%
 
@@ -41,33 +104,78 @@ exp : const  (const)
     | seq    (seq)
     | call   (call)
     | record (record)
+    | opexp  (opexp)
     | flow   (flow)
+    | lval   (lval)
+    | array  (array)
+    | assign (assign) 
+(*
+    | let    (let)
+*)
 
 const : String  (STR(String,Stringleft))
       | Integer (INT Integer)
       | Nil     (NIL)
 
-seq  : Lparen Rparen (SEQ [])
+seq  : Lparen Rparen      (SEQ [])
      | Lparen seq' Rparen (SEQ seq')
-seq' : seq' Semi exp ((exp,expleft) :: seq')
-     | exp ([(exp,expleft)])
+seq' : seq' Semi exp      ((exp,expleft) :: seq')
+     | exp                ([(exp,expleft)])
 
-call : Id Lparen Rparen (CALL {func=mk Id, args=[], pos=Idleft})
-     | Id Lparen args Rparen (CALL {func=mk Id, args=args, pos=Idleft})
-args : args Comma exp (exp :: args)
-     | exp ([exp])
+call : Id Lparen Rparen      (newcall(mk Id, [], Idleft))
+     | Id Lparen args Rparen (newcall(mk Id, args, Idleft))
+args : args Comma exp        (exp :: args)
+     | exp                   ([exp])
 
-record : Id Lbrace Rbrace (REC {typ=mk Id, fields=[], pos=Idleft})
-       | Id Lbrace fields Rbrace (REC {typ=mk Id, fields=fields  ,pos=Idleft})
-fields : fields Comma Id Eq exp ((mk Id, exp, Idleft) :: fields)
-       | Id Eq exp ([(mk Id, exp, Idleft)])
+record : Id Lbrace Rbrace        (newrec(mk Id,[],Idleft))
+       | Id Lbrace fields Rbrace (newrec(mk Id,fields,Idleft))
+fields : fields Comma Id Eq exp  ((mk Id, exp, Idleft) :: fields)
+       | Id Eq exp               ([(mk Id, exp, Idleft)])
 
-flow : Break (BREAK Breakleft)
-     | While exp Do exp (WHILE {test=exp1, body=exp2, pos=Whileleft})
-     | If exp Then exp %prec If
-         (IF {test=exp1, then'=exp2, else'=NONE, pos=Ifleft})
-     | If exp Then exp Else exp
-         (IF {test=exp1, then'=exp2, else'=(SOME exp3), pos=Ifleft})
-     | For Id Assign exp To exp Do exp
-         (FOR {var=mk Id, esc=ref false, lo=exp1, 
-               hi=exp2, body=exp3, pos=Forleft})
+opexp : Sub exp %prec Umin    (newop(INT 0,SUB,exp,Subleft))
+      | exp Add exp %prec Add (newop(exp1,ADD,exp2,exp1left))
+      | exp Sub exp %prec Sub (newop(exp1,SUB,exp2,exp1left))
+      | exp Mul exp %prec Mul (newop(exp1,MUL,exp2,exp1left))
+      | exp Div exp %prec Div (newop(exp1,DIV,exp2,exp1left))
+      | exp Eq exp  %prec Eq  (newop(exp1,EQ,exp2,exp1left))
+      | exp Neq exp %prec Neq (newop(exp1,NEQ,exp2,exp1left))
+      | exp Lt exp  %prec Lt  (newop(exp1,LT,exp2,exp1left))
+      | exp Le exp  %prec Le  (newop(exp1,LE,exp2,exp1left))
+      | exp Gt exp  %prec Gt  (newop(exp1,GT,exp2,exp1left))
+      | exp Ge exp  %prec Ge  (newop(exp1,GE,exp2,exp1left))
+(*
+      | exp And exp %prec And (newop(exp1,AND,exp2,exp1left))
+      | exp Or exp  %prec Or  (newop(exp1,OR,exp2,exp1left))
+*)
+
+flow : Break                           (BREAK Breakleft)
+     | While exp Do exp                (newwhile(exp1,exp2,Whileleft))
+     | If exp Then exp %prec If        (newif(exp1,exp2,NONE,Ifleft))
+     | If exp Then exp Else exp        (newif(exp1,exp2,SOME exp3,Ifleft))
+     | For Id Assign exp To exp Do exp (newfor(mk Id,exp1,exp2,exp3,Forleft))
+
+lval   : var (VAR var)
+
+var    : Id optvar              (newvar ((mk Id, Idleft), optvar))
+optvar : Dot Id                 ([TFIELD (mk Id, Dotleft)])
+       | Lbrak exp Rbrak        ([TINDEX (exp, Lbrakleft)])
+       | Dot Id optvar          (TFIELD (mk Id, Dotleft) :: optvar)
+       | Lbrak exp Rbrak optvar (TINDEX (exp, Lbrakleft) :: optvar)
+
+array  : Id Lbrak exp Rbrak Of exp (newarray(mk Id,exp1,exp2,Idleft))
+
+assign : var Assign exp (newassign(var,exp,varleft))
+
+(*
+
+let : Let decs in seq end (newlet(decs,seq,Letleft))
+
+decs : decs dec (dec :: decs)
+     | dec      ([dec])
+dec  : tdec     (tdec)
+     | fdec     (fdec)
+     | vdec     (vdec)
+
+tdec : Type 
+
+*)

@@ -85,7 +85,7 @@ structure AST = struct
                      , pos: pos }
 
  and ty = NAME_TY of sym * pos | REC_TY of field list | ARRAY_TY of sym * pos
- and oper = ADD | SUB | MUL | DIV | EQ | NEQ | LT | LE | GT | GE
+ and oper = ADD | SUB | MUL | DIV | EQ | NEQ | LT | LE | GT | GE (*| AND | OR*)
  withtype field = {name: sym, esc: bool ref, typ: sym, pos: pos}
  and fundec = { name: sym
               , args: field list
