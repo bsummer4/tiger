@@ -73,7 +73,7 @@ fun dec (num : int ref) = num := !num - 1
 %s STRING COMMENT;
 
 ws     = [\ \t]+;
-num    = [1-9][0-9]*;
+num    = [0-9]*;
 id     = [A-Za-z][0-9A-Za-z_]*;
 p1     = "," | ":" |";" |"(" |")" |"[";
 p2     = "]" | "{" |"}" |"." |"+" |"-";

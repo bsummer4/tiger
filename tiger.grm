@@ -2,7 +2,6 @@
 
 open AST;
 open Symbol;
-
 %%
 
 %name Tiger
@@ -11,6 +10,9 @@ open Symbol;
 %noshift Eof
 %start prog
 %verbose 
+
+%nonassoc If
+%nonassoc Else
 
 %term Eof | String of string | Integer of int | Id of string
     | Comma | Colon | Semi | Lparen | Rparen | Lbrak | Rbrak | Lbrace | Rbrace
@@ -29,6 +31,7 @@ open Symbol;
        | args of exp list
        | record of exp
        | fields of (sym * exp * pos) list
+       | flow of exp
 
 %%
 
@@ -38,6 +41,7 @@ exp : const  (const)
     | seq    (seq)
     | call   (call)
     | record (record)
+    | flow   (flow)
 
 const : String  (STR(String,Stringleft))
       | Integer (INT Integer)
@@ -53,7 +57,17 @@ call : Id Lparen Rparen (CALL {func=mk Id, args=[], pos=Idleft})
 args : args Comma exp (exp :: args)
      | exp ([exp])
 
-record : Id Lbrace Rbrace (REC {typ = mk Id, fields=[], pos=Idleft})
-       | Id Lbrace fields Rbrace (REC {typ = mk Id, fields=fields  ,pos=Idleft})
+record : Id Lbrace Rbrace (REC {typ=mk Id, fields=[], pos=Idleft})
+       | Id Lbrace fields Rbrace (REC {typ=mk Id, fields=fields  ,pos=Idleft})
 fields : fields Comma Id Eq exp ((mk Id, exp, Idleft) :: fields)
        | Id Eq exp ([(mk Id, exp, Idleft)])
+
+flow : Break (BREAK Breakleft)
+     | While exp Do exp (WHILE {test=exp1, body=exp2, pos=Whileleft})
+     | If exp Then exp %prec If
+         (IF {test=exp1, then'=exp2, else'=NONE, pos=Ifleft})
+     | If exp Then exp Else exp
+         (IF {test=exp1, then'=exp2, else'=(SOME exp3), pos=Ifleft})
+     | For Id Assign exp To exp Do exp
+         (FOR {var=mk Id, esc=ref false, lo=exp1, 
+               hi=exp2, body=exp3, pos=Forleft})
