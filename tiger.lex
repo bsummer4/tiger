@@ -61,7 +61,7 @@ fun checkword word stp endp =
   |  "function" => Tokens.Fun (stp,endp)
   |  "var"      => Tokens.Var (stp,endp)
   |  "type"     => Tokens.Type (stp,endp)
-  |  _          => Tokens.ID (word,stp,endp)
+  |  _          => Tokens.Id (word,stp,endp)
   
 val print = TextIO.print
 fun inc (num : int ref) = num := !num + 1

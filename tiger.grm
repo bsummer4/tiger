@@ -12,7 +12,7 @@ open Symbol;
 %start prog
 %verbose 
 
-%term Eof | String of string | Integer of int | ID of string
+%term Eof | String of string | Integer of int | Id of string
     | Comma | Colon | Semi | Lparen | Rparen | Lbrak | Rbrak | Lbrace | Rbrace
     | Dot | Plus | Minus | Mult | Div | Eq | Neq | Lt | Leq | Gt | Geq | And
     | Or | Assign | Array | If | Then | Else | While | For | To | Do | Let
@@ -23,13 +23,29 @@ open Symbol;
        | const of exp
        | string of exp
        | number of exp
+       | seqexp of exp
+       | seqexp' of (exp * pos) list
+       | call of exp
+       | args of exp list
 
 %%
 
 prog : exp (exp)
 
-exp : const (const)
+exp : const  (const)
+    | seqexp (seqexp)
+    | call   (call)
 
-const : String  (STR(String,0))
+const : String  (STR(String,Stringleft))
       | Integer (INT Integer)
       | Nil     (NIL)
+
+seqexp  : Lparen Rparen (SEQ [])
+        | Lparen seqexp' Rparen (SEQ seqexp')
+seqexp' : seqexp' Semi exp ((exp,expleft) :: seqexp')
+        | exp ([(exp,expleft)])
+
+call : Id Lparen Rparen (CALL {func=mk Id, args=[], pos=Idleft})
+     | Id Lparen args Rparen (CALL {func=mk Id, args=args, pos=Idleft})
+args : args Comma exp (exp :: args)
+     | exp ([exp])
