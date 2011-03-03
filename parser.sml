@@ -30,8 +30,11 @@ fun go f =
 
 in
 
+val go = go
+(*
 val go = go (fn r => Sexp.printSexp (ASTSexp.toSexp r))
   handle Parse => print "\nRejected!\n";
+*)
 
 end
 end

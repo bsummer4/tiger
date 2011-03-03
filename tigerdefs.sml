@@ -3,7 +3,6 @@ struct
 
 local
 open AST;
-open Symbol;
 in
 
 datatype tvars = TFIELD of sym * pos | TINDEX of exp * pos
