@@ -23,29 +23,37 @@ open Symbol;
        | const of exp
        | string of exp
        | number of exp
-       | seqexp of exp
-       | seqexp' of (exp * pos) list
+       | seq of exp
+       | seq' of (exp * pos) list
        | call of exp
        | args of exp list
+       | record of exp
+       | fields of (sym * exp * pos) list
 
 %%
 
 prog : exp (exp)
 
 exp : const  (const)
-    | seqexp (seqexp)
+    | seq    (seq)
     | call   (call)
+    | record (record)
 
 const : String  (STR(String,Stringleft))
       | Integer (INT Integer)
       | Nil     (NIL)
 
-seqexp  : Lparen Rparen (SEQ [])
-        | Lparen seqexp' Rparen (SEQ seqexp')
-seqexp' : seqexp' Semi exp ((exp,expleft) :: seqexp')
-        | exp ([(exp,expleft)])
+seq  : Lparen Rparen (SEQ [])
+     | Lparen seq' Rparen (SEQ seq')
+seq' : seq' Semi exp ((exp,expleft) :: seq')
+     | exp ([(exp,expleft)])
 
 call : Id Lparen Rparen (CALL {func=mk Id, args=[], pos=Idleft})
      | Id Lparen args Rparen (CALL {func=mk Id, args=args, pos=Idleft})
 args : args Comma exp (exp :: args)
      | exp ([exp])
+
+record : Id Lbrace Rbrace (REC {typ = mk Id, fields=[], pos=Idleft})
+       | Id Lbrace fields Rbrace (REC {typ = mk Id, fields=fields  ,pos=Idleft})
+fields : fields Comma Id Eq exp ((mk Id, exp, Idleft) :: fields)
+       | Id Eq exp ([(mk Id, exp, Idleft)])
