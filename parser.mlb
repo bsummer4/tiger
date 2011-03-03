@@ -7,3 +7,4 @@ tiger.grm.sig
 tiger.grm.sml
 tiger.lex.sml
 parser.sml
+main.sml
