@@ -6,15 +6,17 @@ open Symbol;
 datatype tvars = TFIELD of sym * pos | TINDEX of exp * pos;
 type tvar = (sym * pos) * tvars list;
 
-fun newop     (e1,oper,e2,pos) = OP {left=e1, oper=oper, right=e2, pos=pos}
-fun newwhile  (t,b,pos) = WHILE {test=t, body=b, pos=pos}
-fun newif     (c,t,e,pos) = IF {test=c, then'=t, else'=e, pos=pos}
-fun newfor    (v,l,h,b,pos) = FOR {var=v,esc=ref false,lo=l,hi=h,body=b,pos=pos}
-fun newrec    (t,f,pos) = REC {typ=t, fields=f, pos=pos}
-fun newcall   (f,a,pos) = CALL {func=f, args=a, pos=pos}
-fun newarray  (t,s,i,pos) = ARRAY {typ=t, size=s, init=i, pos=pos}
-fun newassign (v,e,pos) = ASSIGN {var=v, exp=e, pos=pos}
-fun newlet    (d,b,pos) = LET {decs=d, body=b, pos=pos}
+fun newop      (e1,oper,e2,pos) = OP {left=e1, oper=oper, right=e2, pos=pos}
+fun newwhile   (t,b,pos) = WHILE {test=t, body=b, pos=pos}
+fun newif      (c,t,e,pos) = IF {test=c, then'=t, else'=e, pos=pos}
+fun newfor     (v,l,h,b,p) = FOR {var=v,esc=ref false,lo=l,hi=h,body=b,pos=p}
+fun newrec     (t,f,pos) = REC {typ=t, fields=f, pos=pos}
+fun newcall    (f,a,pos) = CALL {func=f, args=a, pos=pos}
+fun newarray   (t,s,i,pos) = ARRAY {typ=t, size=s, init=i, pos=pos}
+fun newassign  (v,e,pos) = ASSIGN {var=v, exp=e, pos=pos}
+fun newlet     (d,b,pos) = LET {decs=d, body=b, pos=pos}
+fun newfield   (n,t,pos) = {name=n, esc=ref false, typ=t, pos=pos}
+fun newtypedec (n,t,pos) = TYPE_DEC [{name=n, ty=t, pos=pos}]
 
 fun newvar    ((s,p),ts) = 
   let
@@ -87,7 +89,7 @@ and tdec (ts,[])   = [TYPE_DEC(ts)]
        | call of exp
        | args of exp list
        | record of exp
-       | fields of (sym * exp * pos) list
+       | rfields of (sym * exp * pos) list
        | opexp of exp
        | flow of exp
        | lval of exp
@@ -95,6 +97,15 @@ and tdec (ts,[])   = [TYPE_DEC(ts)]
        | assign of exp
        | var of var
        | optvar of tvars list
+       | let' of exp
+       | decs of dec list
+       | dec of dec
+       | ty of ty
+       | tfields of field list
+       | tfield of field
+       | tdec of dec
+       | fdec of dec
+       | vdec of dec
 
 %%
 
@@ -109,9 +120,7 @@ exp : const  (const)
     | lval   (lval)
     | array  (array)
     | assign (assign) 
-(*
-    | let    (let)
-*)
+    | let'   (let')
 
 const : String  (STR(String,Stringleft))
       | Integer (INT Integer)
@@ -127,10 +136,10 @@ call : Id Lparen Rparen      (newcall(mk Id, [], Idleft))
 args : args Comma exp        (exp :: args)
      | exp                   ([exp])
 
-record : Id Lbrace Rbrace        (newrec(mk Id,[],Idleft))
-       | Id Lbrace fields Rbrace (newrec(mk Id,fields,Idleft))
-fields : fields Comma Id Eq exp  ((mk Id, exp, Idleft) :: fields)
-       | Id Eq exp               ([(mk Id, exp, Idleft)])
+record  : Id Lbrace Rbrace         (newrec(mk Id, [], Idleft))
+        | Id Lbrace rfields Rbrace (newrec(mk Id, rfields, Idleft))
+rfields : rfields Comma Id Eq exp  ((mk Id, exp, Idleft) :: rfields)
+        | Id Eq exp                ([(mk Id, exp, Idleft)])
 
 opexp : Sub exp %prec Umin    (newop(INT 0,SUB,exp,Subleft))
       | exp Add exp %prec Add (newop(exp1,ADD,exp2,exp1left))
@@ -166,16 +175,17 @@ array  : Id Lbrak exp Rbrak Of exp (newarray(mk Id,exp1,exp2,Idleft))
 
 assign : var Assign exp (newassign(var,exp,varleft))
 
-(*
+let' : Let decs In seq End (newlet(newdec decs,seq,Letleft))
 
-let : Let decs in seq end (newlet(decs,seq,Letleft))
+decs : decs dec      (dec :: decs)
+     | dec           ([dec])
+dec  : Type Id Eq ty (newtypedec(mk Id1, ty, Typeleft))
 
-decs : decs dec (dec :: decs)
-     | dec      ([dec])
-dec  : tdec     (tdec)
-     | fdec     (fdec)
-     | vdec     (vdec)
+ty   : Id                    (NAME_TY(mk Id, Idleft))
+     | Lbrace Rbrace         (REC_TY([]))
+     | Lbrace tfields Rbrace (REC_TY(tfields))
+     | Array Of Id           (ARRAY_TY(mk Id, Arrayleft))
 
-tdec : Type 
-
-*)
+tfields : tfields Comma tfield (tfield :: tfields)
+        | tfield               ([tfield])
+tfield  : Id Colon Id          (newfield(mk Id1, mk Id2, Id1left))
