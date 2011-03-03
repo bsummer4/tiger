@@ -9,7 +9,8 @@ type tvar = (sym * pos) * tvars list;
 fun newop      (e1,oper,e2,pos) = OP {left=e1, oper=oper, right=e2, pos=pos}
 fun newwhile   (t,b,pos) = WHILE {test=t, body=b, pos=pos}
 fun newif      (c,t,e,pos) = IF {test=c, then'=t, else'=e, pos=pos}
-fun newfor     (v,l,h,b,p) = FOR {var=v,esc=ref false,lo=l,hi=h,body=b,pos=p}
+fun newfor     (v,l,h,b,pos) = 
+  FOR {var=v,esc=ref false,lo=l,hi=h,body=b,pos=pos}
 fun newrec     (t,f,pos) = REC {typ=t, fields=f, pos=pos}
 fun newcall    (f,a,pos) = CALL {func=f, args=a, pos=pos}
 fun newarray   (t,s,i,pos) = ARRAY {typ=t, size=s, init=i, pos=pos}
@@ -17,6 +18,10 @@ fun newassign  (v,e,pos) = ASSIGN {var=v, exp=e, pos=pos}
 fun newlet     (d,b,pos) = LET {decs=d, body=b, pos=pos}
 fun newfield   (n,t,pos) = {name=n, esc=ref false, typ=t, pos=pos}
 fun newtypedec (n,t,pos) = TYPE_DEC [{name=n, ty=t, pos=pos}]
+fun newvardec  (n,t,i,pos) = 
+  VAR_DEC {name=n, esc=ref false, typ=t, init=i, pos=pos}
+fun newfundec  (n,a,r,b,pos) =
+  FUN_DEC [{name=n, args=a, result=r, body=b, pos=pos}]
 
 fun newvar    ((s,p),ts) = 
   let
@@ -102,6 +107,7 @@ and tdec (ts,[])   = [TYPE_DEC(ts)]
        | dec of dec
        | ty of ty
        | tfields of field list
+       | tfields' of field list
        | tfield of field
        | tdec of dec
        | fdec of dec
@@ -175,17 +181,28 @@ array  : Id Lbrak exp Rbrak Of exp (newarray(mk Id,exp1,exp2,Idleft))
 
 assign : var Assign exp (newassign(var,exp,varleft))
 
-let' : Let decs In seq End (newlet(newdec decs,seq,Letleft))
+let'  : Let decs In seq End (newlet(newdec decs,seq,Letleft))
+decs  : decs dec (dec :: decs)
+      | dec      ([dec])
+dec   : tdec     (tdec)
+      | fdec     (fdec)
+      | vdec     (vdec)
+vdec  : Var Id Assign exp
+          (newvardec(mk Id, NONE, exp, Varleft))
+      | Var Id Colon Id Assign exp 
+          (newvardec(mk Id1,SOME (mk Id2, Id2left), exp, Varleft))
+fdec  : Fun Id Lparen tfields Rparen Eq exp 
+          (newfundec(mk Id, tfields, NONE, exp, Funleft))
+      | Fun Id Lparen tfields Rparen Colon Id Eq exp
+          (newfundec(mk Id1, tfields, SOME (mk Id2, Id2left), exp, Funleft))
+tdec  : Type Id Eq ty
+          (newtypedec(mk Id1, ty, Typeleft))
 
-decs : decs dec      (dec :: decs)
-     | dec           ([dec])
-dec  : Type Id Eq ty (newtypedec(mk Id1, ty, Typeleft))
-
-ty   : Id                    (NAME_TY(mk Id, Idleft))
-     | Lbrace Rbrace         (REC_TY([]))
-     | Lbrace tfields Rbrace (REC_TY(tfields))
-     | Array Of Id           (ARRAY_TY(mk Id, Arrayleft))
-
-tfields : tfields Comma tfield (tfield :: tfields)
-        | tfield               ([tfield])
-tfield  : Id Colon Id          (newfield(mk Id1, mk Id2, Id1left))
+ty       : Id                    (NAME_TY(mk Id, Idleft))
+         | Lbrace tfields Rbrace (REC_TY(tfields))
+         | Array Of Id           (ARRAY_TY(mk Id, Arrayleft))
+tfields  : tfields' (tfields')
+         |          ([])
+tfields' : tfields' Comma tfield (tfield :: tfields')
+         | tfield                ([tfield])
+tfield   : Id Colon Id           (newfield(mk Id1, mk Id2, Id1left))
