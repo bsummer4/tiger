@@ -15,7 +15,7 @@ open TigerDefs;
 %nonassoc Else
 
 %nonassoc Assign
-%nonassoc And Or
+%left And Or
 %nonassoc Eq Neq Lt Le Gt Ge
 
 %left Add Sub
@@ -38,7 +38,7 @@ open TigerDefs;
        | array of exp  | assign of exp    | var of var
        | let' of exp   | decs of dec list | dec of dec
        | ty of ty      | tfield of field  | tdec of dec
-       | fdec of dec   | vdec of dec
+       | fdec of dec   | vdec of dec      | seqexp of exp
 
        | seq' of (exp * pos) list | tfields of field list
        | tfields' of field list   | optvar of tvars list
@@ -48,7 +48,7 @@ open TigerDefs;
 prog : exp (exp)
 
 exp : const  (const)
-    | seq    (seq)
+    | seqexp (seqexp)
     | call   (call)
     | record (record)
     | opexp  (opexp)
@@ -62,18 +62,19 @@ const : String  (STR(String,Stringleft))
       | Integer (INT Integer)
       | Nil     (NIL)
 
-seq  : Lparen Rparen      (SEQ [])
-     | Lparen seq' Rparen (SEQ seq')
-seq' : seq' Semi exp      ((exp,expleft) :: seq')
-     | exp                ([(exp,expleft)])
+seqexp : Lparen seq Rparen (seq)
+seq    :                   (SEQ [])
+       | seq'              (SEQ (rev seq'))
+seq'   : seq' Semi exp     ((exp,expleft) :: seq')
+       | exp               ([(exp,expleft)])
 
 call : Id Lparen Rparen      (newcall(mk Id, [], Idleft))
-     | Id Lparen args Rparen (newcall(mk Id, args, Idleft))
+     | Id Lparen args Rparen (newcall(mk Id, rev args, Idleft))
 args : args Comma exp        (exp :: args)
      | exp                   ([exp])
 
 record  : Id Lbrace Rbrace         (newrec(mk Id, [], Idleft))
-        | Id Lbrace rfields Rbrace (newrec(mk Id, rfields, Idleft))
+        | Id Lbrace rfields Rbrace (newrec(mk Id, rev rfields, Idleft))
 rfields : rfields Comma Id Eq exp  ((mk Id, exp, Idleft) :: rfields)
         | Id Eq exp                ([(mk Id, exp, Idleft)])
 
@@ -88,10 +89,8 @@ opexp : Sub exp %prec Umin    (newop(INT 0,SUB,exp,Subleft))
       | exp Le exp  %prec Le  (newop(exp1,LE,exp2,exp1left))
       | exp Gt exp  %prec Gt  (newop(exp1,GT,exp2,exp1left))
       | exp Ge exp  %prec Ge  (newop(exp1,GE,exp2,exp1left))
-(*
       | exp And exp %prec And (newop(exp1,AND,exp2,exp1left))
       | exp Or exp  %prec Or  (newop(exp1,OR,exp2,exp1left))
-*)
 
 flow : Break                           (BREAK Breakleft)
      | While exp Do exp                (newwhile(exp1,exp2,Whileleft))
@@ -101,7 +100,8 @@ flow : Break                           (BREAK Breakleft)
 
 lval   : var (VAR var)
 
-var    : Id optvar              (newvar ((mk Id, Idleft), optvar))
+var    : Id                     (newvar ((mk Id, Idleft), []))
+       | Id optvar              (newvar ((mk Id, Idleft), optvar))
 optvar : Dot Id                 ([TFIELD (mk Id, Dotleft)])
        | Lbrak exp Rbrak        ([TINDEX (exp, Lbrakleft)])
        | Dot Id optvar          (TFIELD (mk Id, Dotleft) :: optvar)
@@ -111,12 +111,12 @@ array  : Id Lbrak exp Rbrak Of exp (newarray(mk Id,exp1,exp2,Idleft))
 
 assign : var Assign exp (newassign(var,exp,varleft))
 
-let'  : Let decs In seq End (newlet(newdec decs,seq,Letleft))
-decs  : decs dec (dec :: decs)
-      | dec      ([dec])
-dec   : tdec     (tdec)
-      | fdec     (fdec)
-      | vdec     (vdec)
+let'  : Let decs In seq End (newlet(newdec (rev decs),seq,Letleft))
+decs  : decs dec            (dec :: decs)
+      | dec                 ([dec])
+dec   : tdec                (tdec)
+      | fdec                (fdec)
+      | vdec                (vdec)
 vdec  : Var Id Assign exp
           (newvardec(mk Id, NONE, exp, Varleft))
       | Var Id Colon Id Assign exp 
@@ -131,8 +131,8 @@ tdec  : Type Id Eq ty
 ty       : Id                    (NAME_TY(mk Id, Idleft))
          | Lbrace tfields Rbrace (REC_TY(tfields))
          | Array Of Id           (ARRAY_TY(mk Id, Arrayleft))
-tfields  : tfields' (tfields')
-         |          ([])
+tfields  : tfields'              (rev tfields')
+         |                       ([])
 tfields' : tfields' Comma tfield (tfield :: tfields')
          | tfield                ([tfield])
 tfield   : Id Colon Id           (newfield(mk Id1, mk Id2, Id1left))

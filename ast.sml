@@ -85,7 +85,7 @@ structure AST = struct
                      , pos: pos }
 
  and ty = NAME_TY of sym * pos | REC_TY of field list | ARRAY_TY of sym * pos
- and oper = ADD | SUB | MUL | DIV | EQ | NEQ | LT | LE | GT | GE (*| AND | OR*)
+ and oper = ADD | SUB | MUL | DIV | EQ | NEQ | LT | LE | GT | GE | AND | OR
  withtype field = {name: sym, esc: bool ref, typ: sym, pos: pos}
  and fundec = { name: sym
               , args: field list
@@ -129,8 +129,9 @@ structure ASTSexp = struct
   val fix = S.SYM o Symbol.name
   fun sexp s args = S.SEQ (S.SYM s::args)
   fun opname oper = case oper
-     of ADD => "+" | SUB => "-" | MUL => "*" | DIV => "/" | EQ => "=" 
-      | NEQ => "<>" | LT => "<" | LE => "<=" | GT => ">" | GE => ">="
+     of ADD => "+"  | SUB => "-" | MUL => "*" | DIV => "/" | EQ => "=" 
+      | NEQ => "<>" | LT => "<"  | LE => "<=" | GT => ">"  | GE => ">="
+      | AND => "&"  | OR => "|"
 
   fun var (SIMPLE(s,_)) = sexp "simple-var" [fix s]
     | var (FIELD(v,s,_)) = sexp "field-var" [var v, fix s]

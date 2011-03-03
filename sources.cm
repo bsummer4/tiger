@@ -1,16 +1,10 @@
 Group is
-
-#if defined (NEW_CM)
-  $/smlnj-lib.cm
-  $/basis.cm
-  $/ml-yacc-lib.cm
-#else
-  ml-yacc-lib.cm
-#endif
-  ast.sml
-  tigerdefs.sml
-  tiger.grm.sml
-  tiger.grm.sig
-  tiger.lex.sml
-  parser.sml
-
+$/smlnj-lib.cm
+$/basis.cm
+$/ml-yacc-lib.cm
+ast.sml
+tigerdefs.sml
+tiger.grm.sig
+tiger.grm.sml
+tiger.lex.sml
+parser.sml

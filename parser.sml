@@ -18,7 +18,7 @@ fun parse lexer = TigerParser.parse(0,lexer,(fn _=>raise Parse),())
 val more = TigerParser.Stream.get
 val lexer = TigerParser.makeLexer get
 
-fun go f =
+fun go' f =
  let fun loop lex =
       let val (r,lex') = parse lex
           val (tok,lex'') = more lex'
@@ -26,15 +26,11 @@ fun go f =
       end
  in loop lexer
  end
-;
 
 in
 
-val go = go
-(*
-val go = go (fn r => Sexp.printSexp (ASTSexp.toSexp r))
-  handle Parse => print "\nRejected!\n";
-*)
+fun go s = (go' (Sexp.printSexp o ASTSexp.toSexp)
+             handle Parse => print "\nRejected!\n")
 
 end
 end
