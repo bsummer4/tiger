@@ -30,6 +30,6 @@ prog : exp (exp)
 
 exp : const (const)
 
-const : String (STR(String,0))
+const : String  (STR(String,0))
       | Integer (INT Integer)
-      | Nil (NIL)
+      | Nil     (NIL)

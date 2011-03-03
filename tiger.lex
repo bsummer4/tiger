@@ -7,15 +7,16 @@ type lexresult = (svalue,pos) token
 
 val linenum = ref 1
 val comment = ref 0
-val string  = ref 0
+val empty   = ref false
+val strv    = ref ""
+val strp    = ref 0
 
 fun eof () = Tokens.Eof(0,0)
 fun error (e,l : int,_) = 
     TextIO.output (TextIO.stdOut,
-      String.concat["line ", (Int.toString l), ": ", e, "\n"])
+      String.concat["char ", (Int.toString l), ": ", e, "\n"])
 
-fun checkpunc word stp endp =
-  case word
+fun checkpunc word stp endp = case word
   of ","  => Tokens.Comma (stp, endp)
   |  ":"  => Tokens.Colon (stp,endp)
   |  ";"  => Tokens.Semi (stp,endp)
@@ -64,7 +65,7 @@ fun checkword word stp endp =
   
 val print = TextIO.print
 
-(* <STRING>{str} =>  (Tokens.String (yytext, yypos, yypos + size yytext) ); *)
+(* <STRING>{str}   => (Tokens.String (yytext, yypos, yypos + size yytext) ); *)
 
 %%
 
@@ -78,31 +79,32 @@ p1     = "," | ":" |";" |"(" |")" |"[";
 p2     = "]" | "{" |"}" |"." |"+" |"-";
 p3     = "*" | "/" |"=" |"<>"|"<" |"<=";
 p4     = ">" | ">="|"&" |"|" |":=";
-punc   = (p1)|(p2)|(p3)|(p4);
+punc   = {p1}|{p2}|{p3}|{p4};
 q      = "\"";
 str    = [^\n"]*;
 
-
 %%
 
-\n  => (linenum := !linenum + 1; lex());
+\n              => (linenum := !linenum + 1; lex());
 
 <INITIAL>{ws}   => (lex());
 <INITIAL>{id}   => (checkword yytext yypos (yypos + size yytext) );
 <INITIAL>{punc} => (checkpunc yytext yypos (yypos + size yytext) );
 <INITIAL>{num}  => (Tokens.Integer ((valOf (Int.fromString yytext)), 
-                    yypos, yypos + size yytext) );
+                      yypos, yypos + size yytext) );
 
-<INITIAL>{q}    =>  (YYBEGIN STRING; print "START!"; lex());
-<STRING>{q}     =>  (print "DONE!"; YYBEGIN INITIAL; lex());
+<INITIAL>{q}    => (YYBEGIN STRING; empty := true; strp := yypos; lex());
+<STRING>{str}   => (strv := yytext; empty := false; lex());
+<STRING>{q}     => (if !empty then strv := "" else (); YYBEGIN INITIAL;
+                      Tokens.String (!strv,!strp,!strp + size (!strv)) );
 
-<INITIAL> "/*"   => (YYBEGIN COMMENT; comment := !comment + 1; lex());
-<COMMENT> [^*]+  => (lex());
-<COMMENT> "*/"   => (comment := !comment - 1;
-                      if !comment = 0 then (YYBEGIN INITIAL; lex()) else lex() );
-<COMMENT> "*"    => (lex());
+<INITIAL> "/*"  => (YYBEGIN COMMENT; comment := !comment + 1; lex());
+<COMMENT> [^*]* => (lex());
+<COMMENT> "*"   => (lex());
+<COMMENT> "*/"  => (comment := !comment - 1;
+                     if !comment = 0 then (YYBEGIN INITIAL; lex()) else lex() );
 
-<INITIAL> "$"    => (Tokens.Eof (yypos,yypos) );
+<INITIAL> "$"   => (Tokens.Eof (yypos,yypos) );
 
-.   => (error ("ignoring bad character "^yytext,
+.               => (error ("ignoring bad character "^yytext,
                       yypos,yypos + size yytext); lex());
