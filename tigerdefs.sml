@@ -1,8 +1,10 @@
 structure TigerDefs = 
 struct
 
+local
 open AST;
 open Symbol;
+in
 
 datatype tvars = TFIELD of sym * pos | TINDEX of exp * pos
 type tvar = (sym * pos) * tvars list
@@ -55,4 +57,5 @@ and tdec (ts,[])   = [TYPE_DEC(ts)]
          of TYPE_DEC(tr) => tdec((hd tr)::ts,l)
          |  _ => TYPE_DEC(ts)::(newdec (d::l)))
 
+end
 end

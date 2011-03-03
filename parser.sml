@@ -1,71 +1,37 @@
-(* tiger.sml *)
-
-(* This file provides glue code for building the calculator using the
- * parser and lexer specified in tiger.lex and tiger.grm.
-*)
-
-structure Tiger : sig
-	           val parse : unit -> unit
-                 end = 
+structure Tiger =
 struct
 
-(* 
- * We apply the functors generated from tiger.lex and tiger.grm to produce
- * the TigerParser structure.
- *)
+local 
 
-  structure TigerLrVals =
-    TigerLrValsFun(structure Token = LrParser.Token)
+exception Parse
+structure TigerLrVals = TigerLrValsFun (structure Token = LrParser.Token)
+structure TigerLex = TigerLexFun (structure Tokens = TigerLrVals.Tokens)
+structure TigerParser =
+ Join
+  (structure ParserData = TigerLrVals.ParserData
+   structure Lex = TigerLex
+   structure LrParser = LrParser)
 
-  structure TigerLex =
-    TigerLexFun(structure Tokens = TigerLrVals.Tokens)
+fun get n = TextIO.inputN(TextIO.stdIn,n)
+fun eof tok = TigerParser.sameToken(tok,TigerLrVals.Tokens.Eof(0,0))
+fun parse lexer = TigerParser.parse(0,lexer,(fn _=>raise Parse),())
+val more = TigerParser.Stream.get
+val lexer = TigerParser.makeLexer get
 
-  structure TigerParser =
-    Join(structure LrParser = LrParser
-	 structure ParserData = TigerLrVals.ParserData
-	 structure Lex = TigerLex)
-
-(* 
- * We need a function which given a lexer invokes the parser. The
- * function invoke does this.
- *)
-
-  fun invoke lexstream =
-      let fun print_error (s,i:int,_) =
-	      TextIO.output(TextIO.stdOut,
-			    "Error, char " ^ (Int.toString i) ^ ", " ^ s ^ "\n")
-       in TigerParser.parse(0,lexstream,print_error,())
+fun go f =
+ let fun loop lex =
+      let val (r,lex') = parse lex
+          val (tok,lex'') = more lex'
+      in f r; if eof tok then () else loop lex''
       end
+ in loop lexer
+ end
+;
 
-(* 
- * Finally, we need a driver function that reads one or more expressions
- * from the standard input. The function parse, shown below, does
- * this. It runs the calculator on the standard input and terminates when
- * an end-of-file is encountered.
- *)
+in
 
-  fun parse () = 
-      let
-          local
-            val getStdIn = fn _ => Option.valOf (TextIO.inputLine TextIO.stdIn)
-          in
-            val lexer = TigerParser.makeLexer getStdIn
-          end
-	  val dummyEOF = TigerLrVals.Tokens.Eof(0,0)
-	  fun loop lexer =
-	      let val (result,lexer) = invoke lexer
-		  val (nextToken,lexer) = TigerParser.Stream.get lexer
-		  (* val _ = case result
-                  (* HERE IS WHERE WE PRINT RESULT *)
-			    of SOME r =>
-				TextIO.output(TextIO.stdOut,
-				       "result = " ^ (Int.toString r) ^ "\n")
-			     | NONE => ()
-                   *)
-	       in if TigerParser.sameToken(nextToken,dummyEOF) then ()
-		  else loop lexer
-	      end
-       in loop lexer
-      end
+val go = go (fn r => Sexp.printSexp (ASTSexp.toSexp r))
+  handle Parse => print "\nRejected!\n";
 
-end (* structure Tiger *)
+end
+end
