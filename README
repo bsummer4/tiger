@@ -1,11 +1,11 @@
-The directory structure:
+DIRECTORY STRUCTURE:
 
 ./bin      -- contains compiler binares and test script
 ./src      -- contains compiler helper/driver code
 ./tiger    -- contains Tiger grammar files
 ./examples -- contains example Tiger files
 
-Build instructions:
+BUILD INSTRUCTIONS:
 To build the parser binary, type:
 
 make
@@ -14,8 +14,14 @@ The parser executable expects a file on stdin.
 It will then dump an AST on stdout. The example
 files should all parse correctly.
 
-Test instructions:
+TEST INSTRUCTIONS:
 A test executable is located at ./bin/test
 To run the test executable, build the parser first.
 To test how small snippets of code would be parsed,
 simply pass the snippet in as a string argument.
+
+HACKING INSTRUCTIONS:
+This is only a parser. The main parser driver code is
+contained in src/parser.sml. This would be the file to
+look at/modify to hook the parser into a full-blown 
+compiler.
