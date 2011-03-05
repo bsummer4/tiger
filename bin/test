@@ -1,0 +1,11 @@
+#!/bin/bash
+
+parser=`dirname $0`/parser
+
+if [ -f $parser ]
+then
+  echo $@ | $parser
+else
+  echo "Error: parser executable not found."
+  echo "       Build the parser using make."
+fi
