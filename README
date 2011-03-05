@@ -25,3 +25,7 @@ This is only a parser. The main parser driver code is
 contained in src/parser.sml. This would be the file to
 look at/modify to hook the parser into a full-blown 
 compiler.
+
+The files under ./tiger and the rest of the files
+under ./src are only of interest to someone working on
+extending the parser.
