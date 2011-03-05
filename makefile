@@ -1,10 +1,8 @@
-all:
-	mllex tiger.lex
-	mlyacc tiger.grm
-#	rm tiger.grm.desc
-
+parser: grammar
+	mlton -output bin/parser parser.mlb
+test: grammar
+	sml parser.cm
+grammar:
+	mllex tiger/tiger.lex; mlyacc tiger/tiger.grm
 clean:
-	rm -rf *.grm.* *.lex.* .cm
-
-test: all
-	rlwrap sml sources.cm
+	rm -rf tiger/*.grm.* tiger/*.lex.* .cm bin/parser

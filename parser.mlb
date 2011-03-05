@@ -1,10 +1,10 @@
 $(SML_LIB)/basis/basis.mlb
 $(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
 $(SML_LIB)/mlyacc-lib/mlyacc-lib.mlb
-ast.sml
-tigerdefs.sml
-tiger.grm.sig
-tiger.grm.sml
-tiger.lex.sml
-parser.sml
-main.sml
+src/ast.sml
+src/tigerdefs.sml
+tiger/tiger.grm.sig
+tiger/tiger.grm.sml
+tiger/tiger.lex.sml
+src/parser.sml
+src/main.sml

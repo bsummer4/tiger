@@ -1,0 +1,19 @@
+The directory structure:
+
+./bin      -- contains compiler binares
+./src      -- contains compiler helper/driver code
+./tiger    -- contains Tiger grammar files
+./examples -- contains example Tiger files
+
+Build instructions:
+To build the parser binary, type:
+
+make
+
+To run the parser in a smlnj test environment, type
+
+make test
+
+The parser executable expects a file on stdin.
+It will then dump an AST on stdout. The example
+files should all parse correctly.
