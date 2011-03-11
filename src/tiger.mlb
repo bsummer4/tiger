@@ -2,6 +2,7 @@ $(SML_LIB)/basis/basis.mlb
 $(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
 $(SML_LIB)/mlyacc-lib/mlyacc-lib.mlb
 ast.sml
+ir.sml
 tigerdefs.sml
 tiger.grm.sig
 tiger.grm.sml

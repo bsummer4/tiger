@@ -2,15 +2,15 @@ This is a compiler for the tiger language
 
 # Quick Start
 | $ mk
-| $ ./o.parser
+| $ ./o.parse
 | hi
 | ^D
 | (var (simple-var hi))
 | $
-| $ ./interact.sh ./o.parser hi
+| $ ./interact.sh ./o.parse hi
 | (simple-var hi)
 | $
-| $ ./interact.sh ./o.parser
+| $ ./interact.sh ./o.parse
 | hi
 | (var
 |  (simple-var hi))

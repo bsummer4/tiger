@@ -20,13 +20,14 @@ signature IR = sig
  datatype varExp = LOCAL of int | GLOBAL of var | FIELD of varExp * int
                  | INDEX of varExp * exp
  and oper = ADD | SUB | MUL | DIV | EQ | NEQ | LT | LE | GT | GE
- and stmt = ASSIGN of varExp * exp | IF of exp * block * block
-          | WHILE of exp * block | FOR of (exp * exp * exp) * block
+ and stmt = ASSIGN of varExp * exp | IF of exp * stmt list * stmt list
+          | WHILE of exp * stmt list | FOR of (exp * exp * exp) * stmt list
           | BREAK | RETURN of exp option | EXP of exp | NIL
  and exp = VAR of varExp | INT of int | STR of string
          | CALL of proc * exp list | OP of exp * oper * exp
- withtype block = stmt list
- type program and procData = Type.t list * block
+ type block = stmt list
+ type program
+ type procData = Type.t list * block
  val empty: program
  val decVar: program -> Type.t -> (program * var)
  val decProc: program -> Type.proc -> (program * proc)
@@ -147,6 +148,7 @@ structure CG = struct
  fun renderProc p proc =
   let val id = IR.procNum p proc
       val ((ty,args),SOME (vars,code)) = IR.proc p proc
+      (* :TODO: non-exahustive match is a temporary hack.  *)
   in renderFun ty id args vars code
   end
 

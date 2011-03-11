@@ -1,4 +1,4 @@
-all:V: o.parser
+all:V: o.parse o.irtest
 clean:V:
 	rm -rf o.*
 	cd src; mk clean
@@ -11,7 +11,7 @@ o.%: grammar src/tiger.mlb %.sml
 	src/tiger.mlb
 	$stem.sml
 	!
-	{ mlton o.$stem.mlb; exit=$?; }
+	{ mlton o.$stem.mlb; exit=$?; } && true
 	rm o.$stem.mlb
 	exit $exit
 
