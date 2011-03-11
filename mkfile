@@ -1,9 +1,19 @@
-all:V: whitepaper.pdf
-show:V: all
-	zathura whitepaper.pdf
-
+all:V: o.parser
 clean:V:
-	rm -f whitepaper.tr whitepaper.pdf
+	rm -rf o.*
+	cd src; mk clean
+
+grammar:V:
+	cd src; mk grammar
+
+o.%: grammar src/tiger.mlb %.sml
+	cat >o.$stem.mlb <<!
+	src/tiger.mlb
+	$stem.sml
+	!
+	{ mlton o.$stem.mlb; exit=$?; }
+	rm o.$stem.mlb
+	exit $exit
 
 whitepaper.tr: whitepaper
 	cat >$target <<!
@@ -14,6 +24,3 @@ whitepaper.tr: whitepaper
 	.2C
 	!
 	marks <$prereq >>$target
-
-whitepaper.pdf: whitepaper.tr
-	(9 troff -ms | 9 tr2post | 9 psfonts | ps2pdf - -) <$prereq >$target

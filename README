@@ -1,1 +1,20 @@
 This is a compiler for the tiger language
+
+# Directory Structure
+| ./bin      -- compiler binares and test scripts
+| ./src      -- compiler helper/driver code
+| ./tiger    -- Tiger grammar files
+| ./examples -- example Tiger files
+
+# Build Instructions
+To build the parser binary, type:
+
+| make
+
+The parser executable expects a file on stdin.  It will then dump an
+AST on stdout. The example files should all parse correctly.
+
+# Test Instructions
+A test executable is located at ./bin/test To run the test executable,
+build the parser first.  To test how small snippets of code would be
+parsed, simply pass the snippet in as a string argument.

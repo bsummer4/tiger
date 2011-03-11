@@ -1,0 +1,7 @@
+all:V: grammar
+clean:V:
+	rm -rf *.grm.* *.lex.* .cm
+
+grammar:V:
+	mllex tiger.lex
+	mlyacc tiger.grm

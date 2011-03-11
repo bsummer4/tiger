@@ -54,10 +54,10 @@ end
 
 structure AST = struct
  type pos = int and sym = Symbol.t
+ type field = {name: sym, esc: bool ref, typ: sym, pos: pos}
  datatype var = SIMPLE of sym * pos
               | FIELD of var * sym * pos
               | INDEX of var * exp * pos
-
  and exp = VAR of var
          | NIL
          | INT of int
@@ -85,13 +85,12 @@ structure AST = struct
                      , pos: pos }
 
  and ty = NAME_TY of sym * pos | REC_TY of field list | ARRAY_TY of sym * pos
- and oper = ADD | SUB | MUL | DIV | EQ | NEQ | LT | LE | GT | GE
- withtype field = {name: sym, esc: bool ref, typ: sym, pos: pos}
- and fundec = { name: sym
-              , args: field list
-              , result: (sym * pos) option
-              , body: exp
-              , pos: pos }
+ and oper = ADD | SUB | MUL | DIV | EQ | NEQ | LT | LE | GT | GE | AND | OR
+ withtype fundec = { name: sym
+                   , args: field list
+                   , result: (sym * pos) option
+                   , body: exp
+                   , pos: pos }
 end
 
 (*
@@ -129,8 +128,9 @@ structure ASTSexp = struct
   val fix = S.SYM o Symbol.name
   fun sexp s args = S.SEQ (S.SYM s::args)
   fun opname oper = case oper
-     of ADD => "+" | SUB => "-" | MUL => "*" | DIV => "/" | EQ => "=" 
-      | NEQ => "<>" | LT => "<" | LE => "<=" | GT => ">" | GE => ">="
+     of ADD => "+"  | SUB => "-" | MUL => "*" | DIV => "/" | EQ => "=" 
+      | NEQ => "<>" | LT => "<"  | LE => "<=" | GT => ">"  | GE => ">="
+      | AND => "&"  | OR => "|"
 
   fun var (SIMPLE(s,_)) = sexp "simple-var" [fix s]
     | var (FIELD(v,s,_)) = sexp "field-var" [var v, fix s]
