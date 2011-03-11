@@ -3,16 +3,16 @@ clean:V:
 	rm -rf o.*
 	cd src; mk clean
 
-grammar:V:
-	cd src; mk grammar
+src/tiger.mlb:
+	cd src; mk tiger.mlb
 
-o.%: grammar src/tiger.mlb %.sml
-	cat >o.$stem.mlb <<!
+o.%: src/tiger.mlb %.sml
+	cat >tmp.mlb <<!
 	src/tiger.mlb
 	$stem.sml
 	!
-	{ mlton o.$stem.mlb; exit=$?; } && true
-	rm o.$stem.mlb
+	{ mlton -output $target tmp.mlb; exit=$?; } || true
+	rm tmp.mlb
 	exit $exit
 
 whitepaper.tr: whitepaper

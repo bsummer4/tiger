@@ -1,7 +1,34 @@
-all:V: grammar
-clean:V:
-	rm -rf *.grm.* *.lex.* .cm
+# tiger.cm and tiger.mlb depend on everything else in the module, thus
+# saying {mk tiger.mlb} will build everything.
 
-grammar:V:
-	mllex tiger.lex
-	mlyacc tiger.grm
+cm = @/smlnj-lib.cm @/basis.cm @/ml-yacc-lib.cm
+mlb =\
+ @/basis/basis.mlb @/smlnj-lib/Util/smlnj-lib.mlb\
+ @/mlyacc-lib/mlyacc-lib.mlb
+
+src =\
+ ast.sml ir.sml tigerdefs.sml tiger.grm.sig tiger.grm.sml\
+ tiger.lex.sml
+
+clean:V:
+	rm -rf *.grm.* *.lex.* .cm *.mlb *.cm
+
+%.grm.desc %.grm.sig %.grm.sml: %.grm
+	mlyacc $stem.grm
+
+%.lex.sml: %.lex
+	mllex $stem.lex
+
+# :TODO: The {=} -> { } rule is a hack; find a nicer way.
+tiger.cm: mkfile $src
+	(sed 's/ /\n/g;s/=/ /' | sed '/^$/d' | sed 's|^ *@/|$/|') >$target <<!
+	Group=is
+	$cm
+	$src
+	!
+
+tiger.mlb: mkfile $src
+	(sed 's/ /\n/g' | sed '/^$/d' | sed 's|^ *@/|$(SML_LIB)/|') >$target <<!
+	$mlb
+	$src
+	!

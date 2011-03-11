@@ -3,3 +3,9 @@
    we get errors in SML/NJ:
 
 	| parser.sml:2.2-2.15 Error: unbound structure: LrParser
+
+:TODO: README should talk about directory layout
+	(driver files at the root.  )
+
+:TODO: sa.sml doesn't work
+	It's just scaffolding for now anyways, but it should be fixed
