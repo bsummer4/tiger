@@ -99,7 +99,7 @@ structure CG = struct
 
  fun TODO() = raise Fail "Not Implemented"
 
- val letters = "abcdefghijklmnopqrstuvwxyz";
+ val letters = "abcdefghijklmnopqrstuvwxyz"
  fun name i =
   let val n = size letters
   in case (i div n, i mod n) of (tag,idx) =>

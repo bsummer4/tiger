@@ -1,6 +1,6 @@
-open AST;
-open Symbol;
-open TigerDefs;
+open AST
+open Symbol
+open TigerDefs
 
 %%
 
