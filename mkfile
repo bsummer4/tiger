@@ -22,13 +22,3 @@ o.%: src/tiger.mlb %.sml
 	$stem.sml
 	!
 	mlton -output $target tmp.mlb
-
-whitepaper.tr: whitepaper
-	cat >$target <<!
-	.TL
-	Tiger
-	.AU
-	Benjamin Summers
-	.2C
-	!
-	marks <$prereq >>$target
