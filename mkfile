@@ -4,7 +4,7 @@ progs = parse irtest
 # :TODO: Generate this dependency list from $progs
 all:V: o.parse o.irtest
 clean:V:
-	rm -rf o.* testresults
+	rm -rf o.* testresults tmp.mlb
 	cd src; mk clean
 
 # :TODO: Generate this dependency list from $progs and $example
@@ -21,9 +21,7 @@ o.%: src/tiger.mlb %.sml
 	src/tiger.mlb
 	$stem.sml
 	!
-	{ mlton -output $target tmp.mlb; exit=$?; } || true
-	rm tmp.mlb
-	exit $exit
+	mlton -output $target tmp.mlb
 
 whitepaper.tr: whitepaper
 	cat >$target <<!
