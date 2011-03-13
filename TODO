@@ -9,3 +9,15 @@
 
 :TODO: sa.sml doesn't work
 	It's just scaffolding for now anyways, but it should be fixed
+
+:TODO: doc/* in troff
+	Generate output with 'marks', and the tweak it so that it looks nice.
+	This should probably be added as a header:
+
+		| .TL
+		| Tiger Language Tutorial
+		| .AU
+		| Aaron Mishtal
+		| Stephen Skeirik
+		| Benjamin Summers
+		| .2C
