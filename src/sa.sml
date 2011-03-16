@@ -1,11 +1,16 @@
+(* Is 'e' a member of 'l'? *)
 fun mem e l = case List.find (fn x=>x=e) l of NONE=>false | _=>true
+
+(* This is like valOf except you may throw your own exception. *)
 fun protect e NONE = raise e
   | protect _ (SOME x) = x
+
+(* This lets us compare objects by identity instead of by value. *)
+type unique = unit ref
 
 structure Semantic = struct
  structure ST = Symbol.Table
  structure Type = struct
-  type unique = unit ref
   datatype t = NIL | INT | STRING | UNIT
              | RECORD of (Symbol.t * t) list * unique
              | ARRAY of t * unique
@@ -28,7 +33,7 @@ structure Semantic = struct
 
  datatype operType = INT_OP | CMP_OP
  fun operType oper =
-  if mem oper [AST.PlusOp,AST.MinusOp,AST.TimesOp,AST.DivideOp]
+  if mem oper [AST.ADD,AST.SUB,AST.MUL,AST.DIV]
   then INT_OP else CMP_OP
  fun valueType (Value.FUN {result,...}) = result
    | valueType (Value.VAR t) = t
@@ -44,17 +49,17 @@ structure Semantic = struct
 
  and varType (env: Context.t) var =
   case var
-   of AST.SimpleVar(sym,pos) => valueType (varLookup env sym)
-    | AST.FieldVar(var,sym,pos) => TODO
-    | AST.SubscriptVar(var,exp,pos) => TODO
+   of AST.SIMPLE(sym,pos) => valueType (varLookup env sym)
+    | AST.FIELD(var,sym,pos) => TODO
+    | AST.INDEX(var,exp,pos) => TODO
 
  and expType (env: Context.t) exp =
   case exp
-   of AST.OpExp{left,right,oper,pos} =>
+   of AST.OP{left,right,oper,pos} =>
        ( case operType oper
           of INT_OP => app (expect env Type.INT) [left,right]
            | CMP_OP => expectMatch env (left,right)
        ; Type.INT )
-    | AST.VarExp v => varType env v
+    | AST.VAR v => varType env v
     | _ => TODO
 end
