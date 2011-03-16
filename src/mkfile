@@ -1,5 +1,5 @@
-# tiger.cm and tiger.mlb depend on everything else in the module, thus
-# saying {mk tiger.mlb} will build everything.
+# The order of files in $src matters.  Source files files earlier in the
+# list may not depend on things defined in files later in the list.
 
 cm = @/smlnj-lib.cm @/basis.cm @/ml-yacc-lib.cm
 mlb =\
@@ -10,6 +10,7 @@ src =\
  ast.sml ir.sml tigerdefs.sml tiger.grm.sig tiger.grm.sml\
  tiger.lex.sml
 
+all:V: tiger.mlb tiger.cm $src
 clean:V:
 	rm -rf *.grm.* *.lex.* .cm *.mlb *.cm
 
@@ -19,15 +20,13 @@ clean:V:
 %.lex.sml: %.lex
 	mllex $stem.lex
 
-# :TODO: The {=} -> { } rule is a hack; find a nicer way.
-tiger.cm: mkfile $src
-	(sed 's/ /\n/g;s/=/ /' | sed '/^$/d' | sed 's|^ *@/|$/|') >$target <<!
-	Group=is
+tiger.cm: mkfile
+	(sed 's/ /\n/g' | sed '/^$/d;1iGroup is' | sed 's|^ *@/|$/|') >$target <<!
 	$cm
 	$src
 	!
 
-tiger.mlb: mkfile $src
+tiger.mlb: mkfile
 	(sed 's/ /\n/g' | sed '/^$/d' | sed 's|^ *@/|$(SML_LIB)/|') >$target <<!
 	$mlb
 	$src
