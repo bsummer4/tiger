@@ -1,7 +1,9 @@
+(* :TODO: Move these toplevel definitions to 'util.sml'. *)
+
 (* Is 'e' a member of 'l'? *)
 fun mem e l = case List.find (fn x=>x=e) l of NONE=>false | _=>true
 
-(* This is like valOf except you may throw your own exception. *)
+(* This is like valOf except the caller chooses what exception is thrown. *)
 fun protect e NONE = raise e
   | protect _ (SOME x) = x
 
@@ -9,12 +11,12 @@ fun protect e NONE = raise e
 type unique = unit ref
 
 structure Semantic = struct
- structure ST = Symbol.Table
+ structure ST = SymTable
  structure Type = struct
   datatype t = NIL | INT | STRING | UNIT
-             | RECORD of (Symbol.t * t) list * unique
+             | RECORD of (Symbol.symbol * t) list * unique
              | ARRAY of t * unique
-             | NAME of Symbol.t * t option ref
+             | NAME of Symbol.symbol * t option ref
  end
 
  structure Value = struct
@@ -22,13 +24,14 @@ structure Semantic = struct
  end
 
  structure Context = struct
-  type t = {type':Type.t ST.t, var:Value.t ST.t}
+  type t = {type':Type.t ST.table, var:Value.t ST.table}
   val empty = {type'=ST.empty, var=ST.empty}: t
-  val default = empty (* :TODO: *)
+  (* :TODO: Add all the default bindings to 'default'. *)
+  val default = empty
  end
 
  exception TypeError
- exception UndefinedVariable of Symbol.t
+ exception UndefinedVariable of Symbol.symbol
  val TODO = Type.NIL
 
  datatype operType = INT_OP | CMP_OP

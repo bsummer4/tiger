@@ -2,58 +2,56 @@
 	This defines the representation of symbol tables, the AST
 	representation for tiger code, and a function to output an AST
 	(AST.print).
-
-	This is mostly derived from the code here:
-
-		http://www.cs.princeton.edu/~appel/modern/ml/project.html
 *)
 
-signature TABLE = sig
- type key
- type 'a t
- val empty: 'a t
- val enter: 'a t * key * 'a -> 'a t
- val look: 'a t * key -> 'a option
-end
+(* :TODO: move to util.sml *)
+exception FAIL
 
+(* Symbols are just strings with constant time comparisons. *)
 signature SYMBOL = sig
- structure Table: TABLE
- eqtype t
- sharing type t = Table.key
- val mk: string -> t
- val name: t -> string
-end
-
-functor IntMapTable (type key val getInt: key -> int): TABLE = struct
- type key = key
- type 'a t = 'a IntBinaryMap.map
- val empty = IntBinaryMap.empty
- fun enter(t,k,a) = IntBinaryMap.insert(t,getInt k,a)
- fun look(t,k) = IntBinaryMap.find(t,getInt k)
+ eqtype symbol
+ val mk: string -> symbol
+ val name: symbol -> string
+ val num: symbol -> int
 end
 
 structure Symbol:> SYMBOL = struct
  structure H = HashTable
- type t = string * int
- structure Table = IntMapTable(type key = t fun getInt(s,n) = n)
- exception Symbol
  val (nextsym, sizeHint) = (ref 0, 128)
- val hashtable: (string,int) H.hash_table =
-  H.mkTable(HashString.hashString, op =) (sizeHint,Symbol)
-
- fun name(s,n) = s
+ val forward : (string,int) H.hash_table =
+  H.mkTable(HashString.hashString, op =) (sizeHint,FAIL)
+ val backward : (int,string) H.hash_table =
+  H.mkTable(Word.fromInt, op =) (sizeHint,FAIL)
+ type symbol = int
+ fun name n = H.lookup backward n
+ fun num n = n
  fun mk name =
-  case H.find hashtable name
-   of SOME i => (name,i)
+  case H.find forward name
+   of SOME i => i
     | NONE => let val i = !nextsym
               in nextsym := i+1
-               ; H.insert hashtable (name,i)
-               ; (name,i)
+               ; H.insert forward (name,i)
+               ; H.insert backward (i,name)
+               ; i
               end
 end
 
+signature SYM_TABLE = sig
+ type 'a table
+ val empty: 'a table
+ val enter: 'a table * Symbol.symbol * 'a -> 'a table
+ val look: 'a table * Symbol.symbol -> 'a option
+end
+
+structure SymTable:> SYM_TABLE = struct
+ type 'a table = 'a IntBinaryMap.map
+ val empty = IntBinaryMap.empty
+ fun enter(t,k,a) = IntBinaryMap.insert(t,Symbol.num k,a)
+ fun look(t,k) = IntBinaryMap.find(t,Symbol.num k)
+end
+
 structure AST = struct
- type pos = int and sym = Symbol.t
+ type pos = int and sym = Symbol.symbol
  type field = {name: sym, esc: bool ref, typ: sym, pos: pos}
  datatype var = SIMPLE of sym * pos
               | FIELD of var * sym * pos
