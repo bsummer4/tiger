@@ -10,6 +10,10 @@ fun protect e NONE = raise e
 (* This lets us compare objects by identity instead of by value. *)
 type unique = unit ref
 
+fun last [] = raise Match
+  | last (x::[]) = x
+  | last (x::xs) = last xs
+
 structure Semantic = struct
  structure ST = SymTable
  structure Type = struct
@@ -34,8 +38,8 @@ structure Semantic = struct
  exception UndefinedVariable of Symbol.symbol
  val TODO = Type.NIL
 
- datatype operType = INT_OP | CMP_OP
- fun operType oper =
+ datatype operClass = INT_OP | CMP_OP
+ fun operClassify oper =
   if mem oper [AST.ADD,AST.SUB,AST.MUL,AST.DIV]
   then INT_OP else CMP_OP
  fun valueType (Value.FUN {result,...}) = result
@@ -45,24 +49,57 @@ structure Semantic = struct
 
  fun expect env t exp =
   if t = (expType env exp) then () else raise TypeError
+
  and expectMatch env (a,b) =
   case expType env a
    of Type.NIL => raise TypeError
     | aType => expect env aType b
 
- and varType (env: Context.t) var =
+ and varType (env: Context.t) var : Type.t =
   case var
    of AST.SIMPLE(sym,pos) => valueType (varLookup env sym)
-    | AST.FIELD(var,sym,pos) => TODO
-    | AST.INDEX(var,exp,pos) => TODO
+    | AST.FIELD(var,sym,pos) =>
+       (case varType env var
+         of Type.RECORD(flist,u) =>
+             (case List.find (fn (field,_) => field=sym) flist
+               of SOME(_,ty) => ty
+                | NONE => raise TypeError)
+          | _ => raise TypeError)
+    | AST.INDEX(var,exp,pos) =>
+       ( expect env Type.INT exp
+       ; case varType env var of Type.ARRAY (ty,u) => ty | _ => raise TypeError
+       )
+
+ and operType env {left,right,oper,pos} =
+  ( case operClassify oper
+     of INT_OP => app (expect env Type.INT) [left,right]
+      | CMP_OP => expectMatch env (left,right)
+  ; Type.INT
+  )
+
+ and ifType env {test,then',else',pos} =
+  let val rtype = expType env then'
+  in expect env Type.INT test
+   ; case  else' of (SOME elseExp) => (expect env rtype elseExp; rtype)
+                 | NONE => Type.NIL
+  end
 
  and expType (env: Context.t) exp =
   case exp
-   of AST.OP{left,right,oper,pos} =>
-       ( case operType oper
-          of INT_OP => app (expect env Type.INT) [left,right]
-           | CMP_OP => expectMatch env (left,right)
-       ; Type.INT )
+   of AST.NIL => Type.NIL
+    | AST.BREAK _ => Type.NIL
+    | AST.ASSIGN {var,exp,pos} => (expect env (varType env var) exp; Type.NIL)
+    | AST.SEQ [] => Type.NIL
+    | AST.SEQ el => last (map ((expType env) o #1) el)
+    | AST.INT _ => Type.INT
+    | AST.STR _ => Type.STRING
+    | AST.LET {decs,body,pos} => TODO
     | AST.VAR v => varType env v
-    | _ => TODO
+    | AST.IF e => ifType env e
+    | AST.REC r => TODO
+    | AST.ARRAY a => TODO
+    | AST.WHILE w => TODO
+    | AST.FOR f => TODO
+    | AST.OP oper => operType env oper
+    | AST.CALL c => TODO
 end
