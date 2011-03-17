@@ -17,10 +17,7 @@ testresults/%.parse: o.parse ex/%
 	mkdir -p testresults
 	./o.parse <ex/$stem >testresults/$stem.parse
 
-src/tiger.mlb:
-	cd src; mk tiger.mlb
-
-o.%: src src/tiger.mlb %.sml
+o.%: src %.sml
 	cat >tmp.mlb <<!
 	src/tiger.mlb
 	$stem.sml
