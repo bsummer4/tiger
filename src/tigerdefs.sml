@@ -29,23 +29,24 @@ structure TigerDefs = struct
    in r (SIMPLE(s,p),ts)
    end
 
-  fun newdec [] = []
-    | newdec (d::l) =
-       (case d
-         of FUN_DEC(_) => fdec ([],d::l)
-          | TYPE_DEC(_) => tdec ([],d::l)
-          | VAR_DEC(_) => d::(newdec l))
-
-  and fdec (fs,[]) = [FUN_DEC fs]
-    | fdec (fs,d::l) =
-       (case d
-         of FUN_DEC(fr) => fdec((hd fr)::fs,l)
-          | _ => FUN_DEC(fs)::(newdec (d::l)))
-
-  and tdec (ts,[]) = [TYPE_DEC ts]
-    | tdec (ts,d::l) =
-       (case d
-         of TYPE_DEC(tr) => tdec((hd tr)::ts,l)
-          | _ => TYPE_DEC(ts)::(newdec (d::l)))
+ (*
+	All 'FUN_DEC's and 'TYPE_DEC's in 'decs' must contain exactly one
+	definition.
+ *)
+ fun newdec decs =
+  let fun loop acc [] = rev acc
+        | loop acc remain =
+           (case hd remain
+             of FUN_DEC _ => fdec acc [] remain
+              | TYPE_DEC _ => tdec acc [] remain
+              | VAR_DEC _ => loop (hd remain::acc) (tl remain))
+      and fdec acc fs ((FUN_DEC[f])::ds) = fdec acc (f::fs) ds
+        | fdec _ _ ((FUN_DEC _)::_) = raise FAIL
+        | fdec acc fs ds = loop ((FUN_DEC(rev fs))::acc) ds
+      and tdec acc ts ((TYPE_DEC[t])::ds) = tdec acc (t::ts) ds
+        | tdec _ _ ((TYPE_DEC _)::_) = raise FAIL
+        | tdec acc ts ds = loop ((TYPE_DEC (rev ts))::acc) ds
+  in loop [] decs
+  end
  end
 end
