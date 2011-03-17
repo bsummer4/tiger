@@ -1,11 +1,8 @@
 (*
-	This defines the representation of symbol tables, the AST
-	representation for tiger code, and a function to output an AST
-	(AST.print).
+	This defines the representation of symbols and symbol tables,
+	the AST representation for tiger code, and functions to output
+	an AST (ASTSexp.toSexp).
 *)
-
-(* :TODO: move to util.sml *)
-exception FAIL
 
 (* Symbols are just strings with constant time comparisons. *)
 signature SYMBOL = sig
@@ -186,8 +183,7 @@ structure ASTSexp = struct
         in sexp "record-type" (map f l) end
      | ty(ARRAY_TY(s,p)) = sexp "array-type" [fix s]
 
-  fun unexp (e: Sexp.sexp) = NIL
- in val toSexp = exp
-    val fromSexp = unexp
+ in
+  val toSexp = exp
  end
 end

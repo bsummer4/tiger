@@ -1,14 +1,3 @@
-(*
-	This defines the intermediate representation.  This is mostly
-	a subset of the AST that can be easily translated to C.
-
-	- All objects are fully typed.
-	- All symbols are replaced with references to data structures.
-*)
-fun range n =
- let fun r sofar i = if i<0 then sofar else r (i::sofar) (i-1)
- in r [] (n-1) end
-
 structure Type = struct
  datatype t = VOID | INT | STRING | RECORD of t list | ARRAY of t
             | PROC of proc
@@ -96,8 +85,6 @@ structure CG = struct
  open TextIO
  open IR
  fun w s = output(stdOut,s)
-
- fun TODO() = raise Fail "Not Implemented"
 
  val letters = "abcdefghijklmnopqrstuvwxyz"
  fun name i =

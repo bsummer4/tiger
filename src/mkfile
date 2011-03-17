@@ -7,7 +7,7 @@ mlb =\
  @/mlyacc-lib/mlyacc-lib.mlb
 
 src =\
- ast.sml sa.sml ir.sml tigerdefs.sml tiger.grm.sig tiger.grm.sml\
+ util.sml ast.sml sa.sml ir.sml tigerdefs.sml tiger.grm.sig tiger.grm.sml\
  tiger.lex.sml
 
 all:V: tiger.mlb tiger.cm $src

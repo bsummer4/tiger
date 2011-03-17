@@ -39,8 +39,7 @@ fun checkpunc word stp endp = case word
    | ":=" => Tokens.Assign (stp,endp)
    | _    => raise Match
 
-fun checkword word stp endp =
-  case word
+fun checkword word stp endp = case word
   of "array"    => Tokens.Array (stp,endp)
    | "if"       => Tokens.If    (stp,endp)
    | "then"     => Tokens.Then  (stp,endp)
@@ -59,10 +58,6 @@ fun checkword word stp endp =
    | "var"      => Tokens.Var   (stp,endp)
    | "type"     => Tokens.Type  (stp,endp)
    | _          => Tokens.Id    (word,stp,endp)
-
-val print = TextIO.print
-fun inc (num : int ref) = num := !num + 1
-fun dec (num : int ref) = num := !num - 1
 
 %%
 

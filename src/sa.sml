@@ -1,18 +1,6 @@
-(* :TODO: Move these toplevel definitions to 'util.sml'. *)
-
-(* Is 'e' a member of 'l'? *)
-fun mem e l = case List.find (fn x=>x=e) l of NONE=>false | _=>true
-
-(* This is like valOf except the caller chooses what exception is thrown. *)
-fun protect e NONE = raise e
-  | protect _ (SOME x) = x
-
-(* This lets us compare objects by identity instead of by value. *)
-type unique = unit ref
-
-fun last [] = raise Match
-  | last (x::[]) = x
-  | last (x::xs) = last xs
+(*
+	For now, this just does type-checking of expressions.
+*)
 
 structure Semantic = struct
  structure ST = SymTable
@@ -36,7 +24,6 @@ structure Semantic = struct
 
  exception TypeError
  exception UndefinedVariable of Symbol.symbol
- val TODO = Type.NIL
 
  datatype operClass = INT_OP | CMP_OP
  fun operClassify oper =
@@ -93,13 +80,13 @@ structure Semantic = struct
     | AST.SEQ el => last (map ((expType env) o #1) el)
     | AST.INT _ => Type.INT
     | AST.STR _ => Type.STRING
-    | AST.LET {decs,body,pos} => TODO
+    | AST.LET {decs,body,pos} => TODO()
     | AST.VAR v => varType env v
     | AST.IF e => ifType env e
-    | AST.REC r => TODO
-    | AST.ARRAY a => TODO
-    | AST.WHILE w => TODO
-    | AST.FOR f => TODO
+    | AST.REC r => TODO()
+    | AST.ARRAY a => TODO()
+    | AST.WHILE w => TODO()
+    | AST.FOR f => TODO()
     | AST.OP oper => operType env oper
-    | AST.CALL c => TODO
+    | AST.CALL c => TODO()
 end

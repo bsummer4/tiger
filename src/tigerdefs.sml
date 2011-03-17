@@ -24,9 +24,8 @@ structure TigerDefs = struct
   fun newvar ((s,p),ts) =
    let fun r (acc, []) = acc
          | r (acc, t::ts) =
-            case t
-             of TFIELD(s,pos) => r (FIELD(acc,s,pos),ts)
-              | TINDEX(e,pos) => r (INDEX(acc,e,pos),ts)
+            case t of TFIELD(s,pos) => r (FIELD(acc,s,pos),ts)
+                    | TINDEX(e,pos) => r (INDEX(acc,e,pos),ts)
    in r (SIMPLE(s,p),ts)
    end
 
