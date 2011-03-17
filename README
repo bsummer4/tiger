@@ -29,8 +29,16 @@ This is a compiler for the tiger language
 | $
 
 # Building
-We are using plan9 mk.  It is available on most Linux distros as a
-package named 'mk' or in either the '9base' or 'plan9port' packages.
+We are using plan9 mk for building.  It is available on most Linux distros
+as a package named 'mk' or in either the '9base' or 'plan9port' packages.
 To build all the executables, run:
 
 	| mk
+
+# Reading
+The bulk of the code is in /src.  The *.sml files at the root bind things
+together to produce the various executables.
+
+All files should begin with a comment explaining what they are for,
+so doing `head *' should provide a nice summary.  Documentation is a
+bit sparse right now since the overall design isn't finished.

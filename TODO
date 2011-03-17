@@ -7,9 +7,6 @@
 :TODO: README should talk about directory layout
 	(driver files at the root.  )
 
-:TODO: sa.sml doesn't work
-	It's just scaffolding for now anyways, but it should be fixed
-
 :TODO: doc/* in troff
 	Generate output with 'marks', and the tweak it so that it looks nice.
 	This should probably be added as a header:
@@ -21,3 +18,6 @@
 		| Stephen Skeirik
 		| Benjamin Summers
 		| .2C
+
+:TODO: SML/NJ Doesn't like util.sml
+	Wrap it in a struct and open it as needed
