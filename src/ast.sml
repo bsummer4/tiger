@@ -99,17 +99,20 @@ structure Sexp = struct
 
  local
   fun w s = TextIO.output (TextIO.stdOut,s)
-  fun printSeq [] = ()
-    | printSeq (x::[]) = print' x
-    | printSeq (x::xs) = (print' x; w " "; printSeq xs)
-  and print' (SEQ l) = (w "("; printSeq l; w ")")
-    | print' (BOOL true) = w "#t"
-    | print' (BOOL false) = w "#f"
-    | print' (SYM s) = w s
-    | print' (STR s) = (w "\""; w s; w "\"")
-    | print' (INT i) = w (Int.toString i)
+  fun indent 0 = ()
+    | indent n = (w " "; indent (n-1))
+
+  fun printSeq d [] = ()
+    | printSeq d (x::[]) = print' d x
+    | printSeq d (x::xs) = (print' d x; w " "; printSeq d xs)
+  and print' d (SEQ l) = (w "\n"; indent (1+d); w "("; printSeq (1+d) l; w ")")
+    | print' d (BOOL true) = w "#t"
+    | print' d (BOOL false) = w "#f"
+    | print' d (SYM s) = w s
+    | print' d (STR s) = (w "\""; w s; w "\"")
+    | print' d (INT i) = w (Int.toString i)
  in
-  fun printSexp s = (print' s; w "\n"; TextIO.flushOut TextIO.stdOut)
+  fun printSexp s = (print' 0 s; w "\n"; TextIO.flushOut TextIO.stdOut)
  end
 end
 
