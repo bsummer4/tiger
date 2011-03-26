@@ -1,0 +1,17 @@
+# `marks' is a text format + converter by one of the authors.  It can be
+# found at `http://github.com/bsummer4/marks'.  For now, the formatting
+# depends on plan9port.
+#
+# :TODO: Poor formatting of the resulting PDFs
+# 	The formatting isn't polished at all, so don't bother installing
+# 	plan9port for this.
+
+MKSHELL = /usr/bin/rc
+docs = tut wp
+all:V: `{echo $docs.pdf}
+clean:V:
+	rm -f $docs.pdf
+
+%.pdf: % mkfile
+	{ {cat hdr.tr;marks} | 9 troff -ms | 9 tr2post | 9 psfonts | ps2pdf - -
+   } <$stem >$stem.pdf
