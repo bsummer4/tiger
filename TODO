@@ -4,20 +4,5 @@
 
 	| parser.sml:2.2-2.15 Error: unbound structure: LrParser
 
-:TODO: README should talk about directory layout
-	(driver files at the root.  )
-
-:TODO: doc/* in troff
-	Generate output with 'marks', and the tweak it so that it looks nice.
-	This should probably be added as a header:
-
-		| .TL
-		| Tiger Language Tutorial
-		| .AU
-		| Aaron Mishtal
-		| Stephen Skeirik
-		| Benjamin Summers
-		| .2C
-
 :TODO: SML/NJ Doesn't like util.sml
 	Wrap it in a struct and open it as needed

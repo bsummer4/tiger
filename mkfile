@@ -1,14 +1,17 @@
-# :TODO: Generate some dependency lists
-#	Various dependency lists could be generate from variables.
-
-examples = `{cd ex; ls}
+ex = `{cd ex; ls}
 progs = parse irtest
+subdirs = src doc
 
-all:V: o.parse o.irtest
-test:V: testresults/8queens.parse
+test = ${ex:%=testresults/%.parse}
+exe = ${progs:%=o.%}
+
+all:V: $exe
+test:V: $test
 clean:V:
 	rm -rf o.* testresults tmp.mlb
-	cd src; mk clean
+	for x in $subdirs
+	do cd $x; mk clean; cd ..
+	done
 
 src:V:
 	cd src; mk all
