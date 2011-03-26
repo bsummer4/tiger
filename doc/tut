@@ -106,8 +106,8 @@ a value to a variable without first declaring it we use an assignment
 expression, which resembles a variable declaration without the `var`
 keyword.
 
-	| ( str := "Hello World!";
-	|   a := 5 )
+| ( str := "Hello World!";
+|   a := 5 )
 
 Note that since an assignment is an expression, it does not need to appear
 in a let expression.  Also, since we used more than one expression, we
@@ -143,13 +143,13 @@ A string in Tiger is any sequence of characters enclosed by double quotes
 by backslash (`\'), that serve as placeholder for special characters.
 The escape sequences that can appear in a Tiger strings are
 
-| |n    -- Newline
-| |t    -- Tab
-| |"    -- Double quote
-| ||    -- Backslash
-| |ddd  -- Character with three digit
+| \n    -- Newline
+| \t    -- Tab
+| \"    -- Double quote
+| \\    -- Backslash
+| \ddd  -- Character with three digit
 |          ASCII code ddd
-| |...| -- Any sequence of whitespace
+| \...\ -- Any sequence of whitespace
 |          characters appearing between
 |          backslashes will be ignored.
 
@@ -218,7 +218,7 @@ evaluates to a nonzero integer, which is true. However, the expression
 evaluates to `0' and is false.  Relational operators have lower precedence
 than any arithmetic operator and do not associate. Thus the statement
 
-| 1 < 5 < 2 
+| 1 < 5 < 2
 
 is not valid in Tiger. Associations must be explicitly given through
 the use of parenthesis for an expression involving multiple sequential
@@ -246,7 +246,7 @@ relational operators and `&' has higher precedence than `|'. The Tiger
 standard library also provides a function for logical negation. The
 function
 
-| function not(i : int) : int 
+| function not(i : int) : int
 
 takes an integer expression and returns 1 if the expression evaluates
 to is false (0), and 0 otherwise.
@@ -264,7 +264,7 @@ type to be Integer using the following statement,
 | let
 |  type Integer = int
 |  var x : Integer := 4
-| in end 
+| in end
 
 Notice that after the type declaration, we are able to use the identifier
 Integer wherever we would normally use int. Types can be redefined
@@ -314,13 +314,13 @@ type will be an array of the previous array type.
 | in
 |  grid := 2Darray[5] of 1Darray[5] of 0;
 |  grid[0][0] := 1
-| end 
+| end
 
 The above code creates a 5x5 two-dimensional integer array with each
 entry initialized to zero and also shows the syntax for accessing a
 given element in a multidimensional array.
 
-### Records 
+### Records
 As with arrays, to create a record we must first declare a record
 type. Records can have zero or more typed fields and each must be given
 a label that is unique within that record. Record fields are accessed
@@ -331,16 +331,16 @@ using the dot (.) operator. The syntax for declaring a record type is
 An example of declaring and using a record type is given by the following
 code,
 
-| let 
+| let
 |  type person = {name:string, age:int}
 |  var John : person := {name=”John”, age=36}
 |  var Mary := {name=”Mary”, age=40}
 | in
 |  Joe := {name=”Joe”, age = 25};
 |  age_of_Joe := Joe.age
-| end 
+| end
 
-### Array and Record Assignment and Comparison 
+### Array and Record Assignment and Comparison
 Arrays and records are implicit pointers in Tiger. When assigning an array
 or record object to a new variable, the variable simply becomes an alias
 for that object and any changes made to that object will be reflected
@@ -357,27 +357,27 @@ Type declarations can be mutually recursive, that is, defined in terms
 of each other, as long as they are declared in an unbroken sequence.
 
 | let
-|  type person = {name:string, 
-|                 age:int, 
+|  type person = {name:string,
+|                 age:int,
 |                 friends:group,
 |                 nFriends:int}
 |  type group = array of person
-| in end 
+| in end
 
 In the above example, the person record is defined as having a field of
 type group, and then the next declaration declares group to be an array
 of type person. These two types are defined in terms of each other and
 are mutually recursive.
 
-## Flow Control
+## Control Flow
 Tiger includes the usual constructs for controlling program flow,
 including several loops and conditional execution statements. All flow
 control structures are expressions.
 
 ### If-Then and If-Then-Else
-The syntax for an if-then statement is 
+The syntax for an if-then statement is
 
-| if expression1 then expression2 
+| if expression1 then expression2
 
 The first expression must evaluate to an integer, and is then
 tested as a truth value. If true (nonzero), the second expression is
@@ -409,7 +409,7 @@ the expression
 |  var x := 0
 | in
 |  if x = 0 then x+1 else 0
-| end 
+| end
 
 evaluates to 1.
 
@@ -427,7 +427,7 @@ not return a value. If the value returned by expression2 is less than the
 value returned by expression1, then expression3 is never evaluated. The
 following example computes the sum of the integers 1 through 10.
 
-| let 
+| let
 |  var sum := 0
 | in
 |  for i := 1 to 10 do sum := sum + i
@@ -448,7 +448,7 @@ the integers 1 through 10.
 |  var i := 1
 | in
 |  while i <= 10 do (sum := sum+i; i := i+1)
-| end 
+| end
 
 ### Break
 To exit a loop early, Tiger provides the keyword break. When encountered,
@@ -461,7 +461,7 @@ Tiger makes a slight distinction between functions, which return a value,
 and procedures, which are evaluated for their side-effects. A function
 declaration looks like
 
-| function fname (param1:type1,..., paramN:typeN):ret-type = expression 
+| function fname (param1:type1,..., paramN:typeN):ret-type = expression
 
 A function has a possibly empty list of typed parameters parameters
 separated by commas, just like a record's field list. The expression that
@@ -490,14 +490,14 @@ in order. The following example shows how to declare and call a function.
 
 | let
 |  var x := 0
-|  function inc_x() = 
+|  function inc_x() =
 |   x := x+1
 |  function add_to_x(y:int):int =
 |   x + y
 | in
 |  inc_x()
 |  z := add_to_x(x)
-| end 
+| end
 
 At the end of the above let expression, the variable z holds the value 2.
 
@@ -507,7 +507,7 @@ or record variable is technically a pointer, functions can make lasting
 changes arrays and records that are passed as parameters. However, note
 that functions can affect the value of any variable declarations that
 they have access to.
- 
+
 ### Function Scope and Mutual Recursion
 As with type declarations, function declarations may be mutually recursive
 if they appear in sequence. Any other type of declaration will end such a
@@ -518,49 +518,53 @@ show how mutual recursion can be used to determine if an integer is odd
 or even.
 
 | let
-|  function abs(x:int) : int = 
-|   if x < 0 
+|  function abs(x:int) : int =
+|   if x < 0
 |   then -x
 |   else x
-|  function is_odd(i:int) : int = 
-|   if i = 0 
+|  function is_odd(i:int) : int =
+|   if i = 0
 |   then 0
 |   else is_even(abs(i-1))
-|  function is_even(i:int) : int = 
-|   if i = 0 
+|  function is_even(i:int) : int =
+|   if i = 0
 |   then 1
 |   else is_odd(abs(i-1))
 | in
 |  is_odd(5);
 |  is_even(5)
-| end  
+| end
 
 ## Input and Output
 The Tiger standard library provides very basic functions for input and
 output. They are:
 
 - function print(s : string)
+
 	Prints the string s to standard output.
 
 - function print(i : int)
+
 	Prints the integer i to standard output.
 
 - function flush()
+
 	Flushes the standard output buffer.
 
 - function getchar() : string
+
 	Reads and returns a character from standard input as a
 	string. Returns an empty string at end-of-file.
 
 The following example shows a simple Tiger program that takes an integer
 value n on standard input and outputs the sum from 1 to n.
 
-| let 
+| let
 |  function pow(x:int,n:int) : int =
 |   ( result := 1;
 |     for i := 1 to n do
 |     result := result * x;
-|     result 
+|     result
 |   )
 |  function rev(s:string) : string =
 |   ( new_str := “”;
@@ -571,27 +575,27 @@ value n on standard input and outputs the sum from 1 to n.
 |      );
 |     new_str
 |   )
-|  function charToInt(s:string) : int = 
+|  function charToInt(s:string) : int =
 |   ord(s) - 48
-|  function stringToInt(s:string) : int = 
+|  function stringToInt(s:string) : int =
 |   ( n := size(s);
 |     value := 0;
 |     rev_str := rev(s);
 |     for i := 0 to n-1 do
 |     ( digit := charToInt(substr(rev_str,i,1));
-|       value := value + digit * pow(10,i) 
+|       value := value + digit * pow(10,i)
 |     );
 |     value
 |   )
 | in
 |  str := "";
-|  while 1 do 
+|  while 1 do
 |   ( input := getchar();
 |     if input = ""
-|     then break 
+|     then break
 |     else str := concat(str, input));
 |  num := strToInt(str);
 |  sum := 0;
 |  for i := 1 to num do sum := sum +  i;
 |  printi(sum); print("\n")
-| end 
+| end
