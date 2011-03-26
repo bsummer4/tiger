@@ -66,93 +66,26 @@ Objects and classes are just syntactic sugar on top of structs and
 closures, so they are also quite easy to implement.
 
 ## Summary of Features
-- Integer Operations
+- Types
+	`int', `string', arrays of any type, records of any type.
+
+- Operators
 	`+', `-', `*', `/', `=', `<>', `<', `>', `>=', and `<='.
 
-- Control Operators
-	`&', and `|'.  These work the same as `&&' and `||' do in C.
+- Control Flow
+	`&', `|', `if-then', `if-then-else', `let', `for', `while',
+	`break', functions, and recursion.  `&', and `|' work just like
+	`&&' and `||' do in C.
 
 - Standard Library
-	| function print (s:string)
-	| function printi (i:int)
-	| function flush ()
-	| function getchar () : string
-	| function ord (s:string) : int
-	| function chr (i:int) : string
-	| function size (s:string) : int
-	| function substring (s:string, f:int, n:int) : string
-	| function concat (s1:string, s2:string) : string
-	| function not (i:int) : int
-	| function exit (i:int)
-
-# Class Project
-For our project, we will attempt to build a Tiger compiler that
-compiles to C and possibly also to x86.  We'd also like to implement
-some extensions: higher-order functions, region-based memory management,
-a foreign-function-interface, optional dynamic typing, and continuations.
-
-We plan to create an initial implementation that implements the base Tiger
-language using a C backend and the :TODO: Bohem GC.  Once we've finished
-that we plan to start adding features, one at a time.  We'll finish as
-many extensions as we can by the end of the semester, and we'll try
-to do them in the following order: higher-order functions, closures,
-an FFI, continuations, an x86 backend, some simple closure conversion
-optimizations, and finally, optional dynamic typing.
-
-## Syntax for Higher Order Functions
-Keeping with the convention Tiger uses for Arrays, all function-valued
-arguments must be bound to an identifier before use.  Function types have
-the following syntax:
-
-| FunctionType -> ( ArgList ) | ( ArgList ) : type_id
-| ArgList -> ArgList type_id |
-
-### Example
-| let type intFun = (int) : int
-|     function adder(x:int) : intFun =
-|      let function result (y:int) = x + y
-|      in result
-|      end
-| in printi(adder(3)(4))
-| end
-
-## Syntax for Dynamic Types
-To support dynamic typing, we extend Tiger with a new type `dyn',
-a boxing function `dyn', and syntax for switching on the type of an
-object.  We also extend the semantics of type definitions to define
-unboxing functions, and we add a new syntax for making variables with
-undeclared types default to `dyn'.  Since this last feature conflicts
-we the default tiger semantics for undeclared types, we add another type
-`unit' for procedures that don't return a value.
-
-:TODO: Explanations
-
-| let function display (o: dyn) =
-|      typecase o
-|       in int => printi(int(o))
-|        | string => print(string(o))
-|        | _ => print("<undefined>")
-|     var x : int = 3
-|     var y : dyn = dyn(x)
-|     var z : int = int(y)
-| in display(dyn(9))
-| end
-
-## Examples
-### Cons
-This is the function used in Lisp for building lists and pairs.  With our
-extensions, we can implement it using only functions.
-
-| let
-|  type Cons = int -> dyn
-|  function cons (car,cdr) =
-|   let function hof (int choice) = if (choice) then car else cdr
-|   in dyn(hof)
-|   end
-|  function car (pair) = Cons(pair)(1)
-|  function cdr (pair) = Cons(pair)(0)
-| in display(car(cons(dyn(3),dyn(4))))
-| end
-
-### MOAR
-:TODO: Come up with some more clever examples
+	| print(s:string)
+	| printi(i:int)
+	| flush()
+	| getchar(): string
+	| ord(char:string): int
+	| chr(code:int): string
+	| size(s:string): int
+	| substring(s:string,f:int,n:int): string
+	| concat(s1:string,s2:string): string
+	| not(i:int): int
+	| exit(i:int)
