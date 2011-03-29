@@ -50,6 +50,8 @@ end
 structure AST = struct
  type pos = int and sym = Symbol.symbol
  type field = {name: sym, esc: bool ref, typ: sym, pos: pos}
+ datatype ty = NAME_TY of sym * pos | REC_TY of field list | ARRAY_TY of sym * pos
+ datatype oper = ADD | SUB | MUL | DIV | EQ | NEQ | LT | LE | GT | GE | AND | OR
  datatype var = SIMPLE of sym * pos
               | FIELD of var * sym * pos
               | INDEX of var * exp * pos
@@ -79,13 +81,121 @@ structure AST = struct
                      , init: exp
                      , pos: pos }
 
- and ty = NAME_TY of sym * pos | REC_TY of field list | ARRAY_TY of sym * pos
- and oper = ADD | SUB | MUL | DIV | EQ | NEQ | LT | LE | GT | GE | AND | OR
  withtype fundec = { name: sym
                    , args: field list
                    , result: (sym * pos) option
                    , body: exp
                    , pos: pos }
+end
+
+(* Let coalescing *)
+structure AST' = struct
+ type pos = int and sym = Symbol.symbol
+ type field = {name: sym, esc: bool ref, typ: sym, pos: pos}
+ datatype ty = NAME_TY of sym | REC_TY of field list | ARRAY_TY of sym
+ datatype oper = ADD | SUB | MUL | DIV | EQ | NEQ | LT | LE | GT | GE | AND | OR
+ datatype var = SIMPLE of sym | FIELD of var * sym | INDEX of var * exp
+ and exp = VAR of var
+         | NIL
+         | INT of int
+         | STR of string * pos
+         | CALL of {func: sym, args: exp list}
+         | OP of {left: exp, oper: oper, right: exp}
+         | REC of { fields: (sym * exp) list
+                  , typ: sym}
+         | SEQ of exp list
+         | ASSIGN of {var: var, exp: exp}
+         | IF of {test: exp, then': exp, else': exp option}
+         | WHILE of {test: exp, body: exp}
+         | FOR of { var: sym, esc: bool ref
+                  , lo: exp, hi: exp, body: exp}
+         | BREAK
+         | ARRAY of {typ: sym, size: exp, init: exp}
+
+ withtype block = { types: typedec list, vars: vardec list, funs: fundec list
+                  , body: exp }
+ and vardec = { name: sym
+              , esc: bool ref
+              , typ: sym option
+              , init: exp }
+
+ and typedec = {name: sym, ty: ty}
+ and fundec = { name: sym
+              , args: field list
+              , result: (sym * pos) option
+              , body: block
+              , pos: pos }
+end
+
+(* Activation Reords *)
+structure AST'' = struct
+ type pos = int and sym = Symbol.symbol
+ type field = {name: sym, esc: bool ref, typ: sym}
+ datatype ty = NAME_TY of sym | REC_TY of field list | ARRAY_TY of sym
+ datatype oper = ADD | SUB | MUL | DIV | EQ | NEQ | LT | LE | GT | GE | AND | OR
+ datatype var = SIMPLE of sym | FIELD of var * sym | INDEX of var * exp
+ and exp = VAR of var
+         | NIL
+         | INT of int
+         | STR of string * pos
+         | CALL of {func: sym, args: exp list}
+         | OP of {left: exp, oper: oper, right: exp}
+         | REC of { fields: (sym * exp) list
+                  , typ: sym}
+         | SEQ of exp list
+         | ASSIGN of {var: var, exp: exp}
+         | IF of {test: exp, then': exp, else': exp option}
+         | WHILE of {test: exp, body: exp}
+         | FOR of { var: sym, esc: bool ref
+                  , lo: exp, hi: exp, body: exp}
+         | BREAK
+         | ARRAY of {typ: sym, size: exp, init: exp}
+
+ datatype ar = AR of {parent: ar option, field list}
+ withtype block = { ar: ar, types: typedec list, funs: fundec list
+                  , body: exp }
+
+ and typedec = {name: sym, ty: ty}
+ and fundec = { name: sym
+              , args: field list
+              , result: (sym * pos) option
+              , body: block }
+end
+
+(* Globalization *)
+structure AST''' = struct
+ type pos = int and sym = Symbol.symbol
+ type field = {name: sym, esc: bool ref, typ: sym}
+ datatype ty = NAME_TY of sym | REC_TY of field list | ARRAY_TY of sym
+ datatype oper = ADD | SUB | MUL | DIV | EQ | NEQ | LT | LE | GT | GE | AND | OR
+ datatype var = SIMPLE of sym | FIELD of var * sym | INDEX of var * exp
+ and exp = VAR of var
+         | NIL
+         | INT of int
+         | STR of string * pos
+         | CALL of {func: sym, args: exp list}
+         | OP of {left: exp, oper: oper, right: exp}
+         | REC of { fields: (sym * exp) list
+                  , typ: sym}
+         | SEQ of exp list
+         | ASSIGN of {var: var, exp: exp}
+         | IF of {test: exp, then': exp, else': exp option}
+         | WHILE of {test: exp, body: exp}
+         | FOR of { var: sym, esc: bool ref
+                  , lo: exp, hi: exp, body: exp}
+         | BREAK
+         | ARRAY of {typ: sym, size: exp, init: exp}
+
+ datatype ar = AR of {parent: ar option, field list}
+ withtype block = { ar: ar, types: typedec list, funs: fundec list
+                  , body: exp }
+
+ and typedec = {name: sym, ty: ty}
+ and fundec = { name: sym
+              , ar: ar
+              , args: field list
+              , result: (sym * pos) option
+              , body: exp }
 end
 
 (*
