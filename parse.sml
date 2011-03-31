@@ -1,8 +1,3 @@
-structure Foo = struct
- open LrParser
-end
-
-exception Parse
 structure TigerLrVals = TigerLrValsFun (structure Token = LrParser.Token)
 structure TigerLex = TigerLexFun (structure Tokens = TigerLrVals.Tokens)
 structure TigerParser =
@@ -10,6 +5,8 @@ structure TigerParser =
   (structure ParserData = TigerLrVals.ParserData
    structure Lex = TigerLex
    structure LrParser = LrParser)
+
+exception Parse
 
 fun get n = TextIO.inputN(TextIO.stdIn,n)
 fun eof tok = TigerParser.sameToken(tok,TigerLrVals.Tokens.Eof(0,0))

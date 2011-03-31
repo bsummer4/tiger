@@ -4,5 +4,10 @@
 
 	| parser.sml:2.2-2.15 Error: unbound structure: LrParser
 
-:TODO: SML/NJ Doesn't like util.sml
-	Wrap it in a struct and open it as needed
+	This can be resolved by adding '$/ml-yacc-lib.cm' to the argument list
+	when invoking sml/nj.
+
+	| sml src/tiger.cm '$/ml-yacc-lib.cm' parse.sml
+
+	The ml-yacc `.cm' file is included in `src/tiger.cm', but it seems to be
+	unavailable from outside.

@@ -1,4 +1,5 @@
 structure Tokens = Tokens
+open Util
 
 type pos = int
 type svalue = Tokens.svalue
@@ -91,7 +92,7 @@ str  = [^\n"]*;
 <COMMENT> [^*/]* => (lex());
 <COMMENT> "*"    => (lex());
 <COMMENT> "*/"   => (dec comment; if !comment = 0 then (YYBEGIN INITIAL; lex())
-                       else lex());
+                      else lex());
 
 <INITIAL> "$"    => (Tokens.Eof (yypos,yypos) );
 

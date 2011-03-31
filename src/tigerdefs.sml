@@ -1,5 +1,5 @@
 structure TigerDefs = struct
- local open AST in
+ local open AST open Util in
   datatype tvars = TFIELD of sym * pos | TINDEX of exp * pos
   type tvar = (sym * pos) * tvars list
 

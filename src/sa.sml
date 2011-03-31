@@ -3,6 +3,7 @@
 *)
 
 structure Semantic = struct
+ open Util
  structure ST = SymTable
  structure Type = struct
   datatype t = NIL | INT | STRING | UNIT

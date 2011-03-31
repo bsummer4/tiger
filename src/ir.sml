@@ -81,6 +81,7 @@ structure IR : IR = struct
 end
 
 structure CG = struct
+ open Util
  exception WTF
  open TextIO
  open IR

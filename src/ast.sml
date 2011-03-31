@@ -13,6 +13,7 @@ signature SYMBOL = sig
 end
 
 structure Symbol:> SYMBOL = struct
+ open Util
  structure H = HashTable
  val (nextsym, sizeHint) = (ref 0, 128)
  val forward : (string,int) H.hash_table =
@@ -263,7 +264,7 @@ structure ASTSexp = struct
      | dec (VAR_DEC{name,esc,typ,init,pos}) =
         (case typ
           of NONE => sexp "var" [fix name, S.BOOL(!esc), exp init]
-           | (SOME(s,_)) =>
+           | SOME (s,_) =>
               sexp "var" [fix name, S.BOOL(!esc), fix s, exp init])
      | dec (TYPE_DEC l) =
         let fun tdec{name,ty=t,pos} = S.SEQ [fix name, ty t]
