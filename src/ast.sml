@@ -192,18 +192,20 @@ structure Sexp = struct
   fun w s = TextIO.output (TextIO.stdOut,s)
   fun indent 0 = ()
     | indent n = (w " "; indent (n-1))
+  fun newline d = (w "\n"; indent d)
 
-  fun printSeq d [] = ()
-    | printSeq d (x::[]) = print' d x
-    | printSeq d (x::xs) = (print' d x; w " "; printSeq d xs)
-  and print' d (SEQ l) = (w "\n"; indent (1+d); w "("; printSeq (1+d) l; w ")")
-    | print' d (BOOL true) = w "#t"
-    | print' d (BOOL false) = w "#f"
-    | print' d (SYM s) = w s
-    | print' d (STR s) = (w "\""; w s; w "\"")
-    | print' d (INT i) = w (Int.toString i)
+  fun printSeq j d [] = ()
+    | printSeq j d (x::[]) = print' j d x
+    | printSeq j d (x::xs) = (print' j d x; w " "; printSeq false d xs)
+  and print' j d (SEQ l) = ( if not j then newline d else ()
+                           ; w "("; printSeq true (1+d) l; w ")")
+    | print' _ d (BOOL true) = w "#t"
+    | print' _ d (BOOL false) = w "#f"
+    | print' _ d (SYM s) = w s
+    | print' _ d (STR s) = (w "\""; w s; w "\"")
+    | print' _ d (INT i) = w (Int.toString i)
  in
-  fun printSexp s = (print' 0 s; w "\n"; TextIO.flushOut TextIO.stdOut)
+  fun printSexp s = (print' true 0 s; w "\n"; TextIO.flushOut TextIO.stdOut)
  end
 end
 
