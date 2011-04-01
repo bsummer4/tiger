@@ -10,6 +10,7 @@ signature SYMBOL = sig
  val mk: string -> symbol
  val name: symbol -> string
  val num: symbol -> int
+ val compare: symbol * symbol -> order
 end
 
 structure Symbol:> SYMBOL = struct
@@ -23,6 +24,7 @@ structure Symbol:> SYMBOL = struct
  type symbol = int
  fun name n = H.lookup backward n
  fun num n = n
+ val compare = Int.compare
  fun mk name =
   case H.find forward name
    of SOME i => i

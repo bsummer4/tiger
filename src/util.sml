@@ -8,6 +8,13 @@ structure Util = struct
  (* Is 'e' a member of 'l'? *)
  fun mem e l = case List.find (fn x=>x=e) l of NONE=>false | _=>true
 
+ (* TODO slow *)
+ fun ins _ (n, []) = [n]
+   | ins l (n, ns as h::t) = if l(n,h) then n::ns else h::(ins l (n, t))
+ fun insertionSort cmp l =
+  List.foldr (ins (fn a => case cmp a of LESS => true | _ => false))
+   [] l
+
  (*
 	 This is like valOf except the caller chooses what exception is thrown.
  *)

@@ -17,23 +17,30 @@ structure Semantic = struct
  end
 
  structure Context = struct
-  type t = {type':Type.t ST.table, var:Value.t ST.table}
-  val empty = {type'=ST.empty, var=ST.empty}: t
+  type t = {ty:Type.t ST.table, var:Value.t ST.table}
+  val empty = {ty=ST.empty, var=ST.empty}: t
   (* :TODO: Add all the default bindings to 'default'. *)
   val default = empty
+  fun bindType {ty,var} name v = {ty=ST.enter(ty,name,v),var=var}
+  fun bindVal {ty,var} name v = {ty=ty,var=ST.enter(var,name,v)}
+  fun getType {ty,var} sym = ST.look(ty,sym)
+  fun getVar {ty,var} sym = ST.look(var,sym)
  end
 
  exception TypeError
  exception UndefinedVariable of Symbol.symbol
+ exception UndefinedType of Symbol.symbol
 
  datatype operClass = INT_OP | CMP_OP
  fun operClassify oper =
   if mem oper [AST.ADD,AST.SUB,AST.MUL,AST.DIV]
   then INT_OP else CMP_OP
+
  fun valueType (Value.FUN {result,...}) = result
    | valueType (Value.VAR t) = t
- fun varLookup (env: Context.t) sym =
-  protect (UndefinedVariable sym) (ST.look (#var env,sym))
+
+ fun varLookup e n = protect (UndefinedVariable n) (Context.getVar e n)
+ fun typeLookup e n = protect (UndefinedVariable n) (Context.getType e n)
 
  fun expect env t exp =
   if t = (expType env exp) then () else raise TypeError
@@ -72,6 +79,27 @@ structure Semantic = struct
                  | NONE => Type.NIL
   end
 
+
+ and recType env {fields, typ, pos} =
+  let fun names ((a,_),(b,_)) = (a,b)
+      val sort = insertionSort (Symbol.compare o names)
+      fun match ab bc = sort ab = sort bc
+      val ty = typeLookup env typ
+      fun extractFields (Type.RECORD(fields,_)) = fields
+        | extractFields _ = raise TypeError
+  in
+   if match (map (fn(sym,e,_)=>(sym,expType env e)) fields)
+       (extractFields ty)
+   then ty
+   else raise TypeError
+  end
+
+ and arrType env {typ,size,init,pos} =
+  case typeLookup env typ of ty =>
+   ( expect env Type.INT size
+   ; expect env (case ty of Type.ARRAY(t,_)=>t | _=>raise TypeError) init
+   ; ty )
+
  and expType (env: Context.t) exp =
   case exp
    of AST.NIL => Type.NIL
@@ -84,8 +112,8 @@ structure Semantic = struct
     | AST.LET {decs,body,pos} => TODO()
     | AST.VAR v => varType env v
     | AST.IF e => ifType env e
-    | AST.REC r => TODO()
-    | AST.ARRAY a => TODO()
+    | AST.REC r => recType env r
+    | AST.ARRAY a => arrType env a
     | AST.WHILE w => TODO()
     | AST.FOR f => TODO()
     | AST.OP oper => operType env oper
