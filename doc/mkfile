@@ -12,6 +12,6 @@ all:V: $out
 clean:V:
 	rm -f $out
 
-%.pdf: % mkfile
+%.pdf: % mkfile hdr.tr
 	( (cat hdr.tr; marks) | 9 troff -ms | 9 tr2post | 9 psfonts | ps2pdf - -
    ) <$stem >$stem.pdf
