@@ -1,0 +1,301 @@
+# Tiger Language Reference Manual
+## Overview
+Tiger is a compact, imperative language, with a syntax similar to some
+functional languages.  The built in types available are restricted
+to integers and strings, arrays, and records with named and typed
+fields. Types can be renamed and new types can be defined through the
+use of type declarations, and adjacent type declarations may be mutually
+recursive. Functions may also be mutually recursive if they are declared
+in sequence.
+
+## Tokens
+Tokens in Tiger are either identifiers, string or integer constants,
+keywords, or punctuation characters. Whitespace (spaces, tabs, newlines)
+may optionally separate tokens. An identifier in Tiger any sequence
+of letters, digits, or underscores that starts with a letter. Tiger
+identifiers are casesensitive. Integer constants are sequences of
+at least one digit (0-9). A comment is a possibly empty sequence of
+characters starting with /* and ending with */, and comments may nest. A
+string constant is a possibly empty sequence of characters enclosed by
+double quotes (“ “). String constants may contain escape sequences
+for printing special characters or suppressing printed whitespace. The
+escape sequences and their corresponding output are
+
+| \n	Newline
+| \t	Tab
+| \”	Double quote
+| \\	Backslash
+| \ddd	The character with the three digit ASCII code ddd.
+| \..\	Any whitespace characters between two backslashes will be ignored.
+
+The keywords in Tiger are:
+
+| array else function let then var break end if nil to while do for in
+| of type
+
+The punctuation symbols in Tiger are:
+
+| . : ; ( ) [ ] { } . + - * / = <> < <= > >= > >= & | :=
+
+## Syntax
+### Expressions
+A valid Tiger program is an expr,
+
+| expr
+| 	-> string-constant
+| 	-> integer-constant
+| 	-> nil
+| 	-> lvalue
+| 	-> - expr
+| 	-> expr binary-operator expr
+| 	-> lvalue := expr
+| 	-> id ( expr-listopt )
+| 	-> ( expr-seqopt )
+| 	-> type-id { field-listopt }
+| 	-> type-id [ expr ] of expr
+| 	-> if expr then expr
+| 	-> if expr then expr else expr
+| 	-> while expr do expr
+| 	-> for expr := expr to expr do expr
+| 	-> break
+| 	-> let declaration-list in expr-seqopt end
+|
+| lvalue:
+| 	-> id
+| 	-> lvalue . id
+| 	-> lvalue [ expr ]
+|
+| expr-seq:
+| 	-> expr
+| 	-> expr-seq ; expr
+|
+| expr-list:
+| 	-> expr
+| 	-> expr-list , expr
+|
+| field-list:
+| 	-> id = expr
+| 	-> field-list , id = expr
+
+Expressions are evaluated either for the value that they return or
+for their side-effects. Most expressions, except for procedure calls,
+assignments, if-then, while, break, and possibly ifthen-else, and let
+expressions return a value.
+
+### Lvalues
+An lvalue is a storage location that can be assigned a value. This can be
+a variable, array elements, or a record field. Indexing in Tiger starts
+with 0.
+
+### Array and Record Literals
+Expressions of the form type-id { field-listopt } create an instance of
+the record type given by type-id. The fields in the field-list must match
+that of the record definition in number, names, types, and order. The
+expression type-id [ expr ] of expr creates an array of type type-id and
+size given by the value of the first expr. The elements of the array are
+initialized to whatever value the second expr evaluates to. Both array
+and record objects are implicit pointers.
+
+### Function and Procedure Calls
+An expression of the form `id ( expr-listopt )' is an application of the
+function bound to id to the parameters given by the (possibly empty)
+comma-separated list of expression parameters. The parameters are
+evaluated before being passed to the function.
+
+### Operators
+Tiger recognizes the following binary operators, listed from low to high
+precedence, :=, |, &, >=, <=, >, <, <>, =, -, +, /, *. Tiger also has a
+unary minus operator, -, which negates a following integer expression,
+and it has higher precedence than any binary operator. Arithmetic
+operators are left associative, while the other operators do not associate
+and must be explicitly grouped.  Parenthesis increase the precedence
+of whatever expression they enclose. The arithmetic operators, +, -
+, /, and *, must be applied to integers and return an integer. If an
+arithmetic operation causes overflow, the result is undefined.
+
+The operators <, >, <=, and >= can be applied to either integers or
+strings, and return a nonzero integer if the comparison is true, and 0
+otherwise. Strings are compared based on standard ASCII lexicographic
+order.
+
+The operators = and <> test for equality and inequality, respectively,
+and can be applied to operands of any type. If applied to array or record
+objects, a shallow (pointer) comparison is performed.
+
+The logical operators, & and |, are lazy operators in that they only
+evaluate their right argument if the left argument does not completely
+determine the result. As with the other comparison operators, integers are
+used for truth values, with 0 being false and anything else being true.
+
+### Assignment
+Assignment statements are of the form lvalue := expr. The expression
+on the right-hand size and then the resulting value is assigned to the
+lvalue. The expression must be one that returns a value that matches
+the type of the lvalue. Array and record assignment performs a shallow
+pointer copy.
+
+### nil
+The expression nil is a value that can be assigned to a variable of
+any record type. A nil-valued record variable is essentially an empty
+pointer and attempting to access the a field of such a variable is a
+runtime error.
+
+### Flow Control
+If-then-else expressions are of the form if expr then expr else expr. The
+first expression is evaluated first and must return an integer. If the
+value of the first expression is not zero, then the second expression is
+evaluated. Otherwise, the third expression is evaluated. The second and
+third expressions must both return values of the same type or no value
+at all. The value of a if-thenelse expression is the value of whichever
+expression is evaluated. If the expression does not evaluate to a value,
+then neither does the if-then-else expression.
+
+If-then expressions are similar but return no value. They have the form
+if expr then expr.  The first expression must evaluate to an integer
+value. If it is nonzero, then the second expression is evaluated. The
+second expression may not return a value.
+
+The while-do expression has the form while expr do expr. The first
+expression is evaluated and must return and integer. If the integer
+is nonzero, then the second expression is evaluated and the while-do
+expression is evaluated again. Otherwise, the second expression is not
+evaluated. The second expression may not return a value.
+
+A for-loop is of the form for id := expr to expr do expr. The first
+and second expressions must evaluate to integers and serve as the
+loop bounds. The third expression is executed once for each integer
+inclusively between the loop bounds. The variable id is bound to the
+current loop index each time and its scope is limited to the third
+expression. The loop variable may not have values assigned to it within
+the third expression. The third expression may not return a value and
+is not executed if the upper loop bound is less than the lower loop bound.
+
+Tiger provides the break keyword to escape from a loop. When encountered,
+the innermost for or while loop will be terminated. The keyword break
+must be used within a loop.
+
+### Let
+A let expression allows declarations to be bound to a sequence of
+expressions. It has the form let declaration-list in expr-seqopt end. The
+declarations are evaluated first and are only in scope for the extent
+of the following expression sequence. The expression sequence is an
+optional list of semicolon-separated expression. The value of a let
+expression is that of the last expression in its expression list. If
+the expression list is empty, the let exression does not return a value.
+
+## Declarations
+A declaration can either be a type declaration, a variable declaration, or
+a function declaration.  Declarations can only appear in the declaration
+list of a let expression, and are only in scope for the extent of the
+let expression's expression list.
+
+| declaration-list:
+| 	declaration
+| 	declaration-list declaration
+|
+| declaration:
+| 	type-declaration
+| 	variable-declaration
+| 	function-declaration
+|
+| type-declaration:
+| 	type type-id = type-declaration
+|
+| type:
+| 	type-id
+| 	{ type-fieldsopt }
+| 	array of type-id
+|
+| type-fields:
+| 	type-field
+| 	type-fields , type-field
+|
+| type-field:
+| 	id : type-id
+|
+| variable-declaration:
+| 	var id := expr
+| 	var id : type-id := expr
+|
+| function-declaration:
+| 	function id ( type-fieldsopt ) = expr
+| 	function id ( type-fieldsopt ) : type-id = expr
+
+### Types
+The only predefined types in Tiger are string and int. Type declarations
+allow the creation of type aliases, records, and arrays. The declaration
+type type-id = type is the general form of a type declaration and the
+the kind of type is declared depends on the form of type.
+
+If type is a type-id, then the type declaration creates an alias for
+that type identifier. If it is { type-fieldsopt } then the declaration
+will declare a record type with named and typed fields as described by
+the right-hand side. Otherwise, if it is array of type-id, then the type
+is an array of whatever type referred to by the right-hand side type-id.
+
+Type declarations create distinct types, that is, multiple record
+types with the same fields or multiple arrays of the same type are
+treated as different types. Types are in scope as soon as they are
+declared. Sequential type declarations may be mutually recursive, and
+the scope of a declaration in such a sequence starts with the first
+declaration in the sequence.
+
+## Variables
+A variable declaration declares a new variable and assigns it an initial
+value. If the type of the variable is not specified as it is in the second
+form of a variable declaration, the type of the variable is determined
+by expr. A variable is in scope immediately after it is declared.
+
+### Functions
+The first form of a function declaration declares a procedure, which
+returns nothing and is evaluated only for its side-effects. As such,
+the expression body of a procedure must not evaluate to a value. The
+second form declares a function, which returns a value of type
+type-id. The expression body of a function must evaluate to a value of
+type type-id. Both functions and procedures can take any number of typed
+and named parameters, which are passed by value.
+
+A function is in scope as soon as it is declared. A sequence of function
+declarations may be mutually recursive, and in this case, the scope
+of a function declaration in the sequence extends to the beginning of
+the sequence.
+
+### Standard Library
+Tiger includes a small standard library to handle some very basic input
+and output, as well as string manipulation.
+
+| function print(s : string)
+	Print the string s to standard output.
+
+| function printi(i : int)
+	Print the integer i to standard output.
+
+| function flush()
+	Flush the standard output buffer.
+
+| function getchar() : string
+	Read and return a character from standard input. If end-of-file
+	is reached, return an empty string.
+
+| function ord(s : string) : int
+	Return the ASCII value of the first character of s, or -1 if s
+	is empty.
+
+| function chr(i : int) : string
+	Return the character with ASCII value i as a string.
+
+| function size(s : string) : int
+	Return the number of characters in s.
+
+| function substring(s : string, f : int, n : int) : string
+	Return the substring of s starting at the character f (numbering
+	starts at zero) and going for n characters.
+
+| function concat(s1 : string, s2 : string) : string
+	Return a new string consisting of s1 followed by s2.
+
+| function not(i : int) : int
+	Return 1 if i is zero, 0 otherwise.
+
+| function exit(i : int)
+	Terminate the execution of the program with exit code i.
