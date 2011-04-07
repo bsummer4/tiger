@@ -11,13 +11,13 @@ structure TigerDefs = struct
   fun newarray   (t,s,i,pos) = ARRAY {typ=t, size=s, init=i, pos=pos}
   fun newassign  (v,e,pos) = ASSIGN {var=v, exp=e, pos=pos}
   fun newlet     (d,b,pos) = LET {decs=d, body=b, pos=pos}
-  fun newfield   (n,t,pos) = {name=n, esc=ref false, typ=t, pos=pos}
+  fun newfield   (n,t,pos) = {name=n, typ=t, pos=pos}
   fun newtypedec (n,t,pos) = TYPE_DEC [{name=n, ty=t, pos=pos}]
 
   fun newfor (v,l,h,b,pos) =
-    FOR {var=v,esc=ref false,lo=l,hi=h,body=b,pos=pos}
+    FOR {var=v,lo=l,hi=h,body=b,pos=pos}
   fun newvardec (n,t,i,pos) =
-    VAR_DEC {name=n, esc=ref false, typ=t, init=i, pos=pos}
+    VAR_DEC {name=n, typ=t, init=i, pos=pos}
   fun newfundec (n,a,r,b,pos) =
     FUN_DEC [{name=n, args=a, result=r, body=b, pos=pos}]
 

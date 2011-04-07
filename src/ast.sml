@@ -50,135 +50,80 @@ structure SymTable:> SYM_TABLE = struct
  fun look(t,k) = IntBinaryMap.find(t,Symbol.num k)
 end
 
- structure Common = struct
-  type pos = int and sym = Symbol.symbol
-  type field = {name: sym, esc: bool ref, typ: sym, pos: pos}
-  datatype ty = NAME_TY of sym * pos | REC_TY of field list | ARRAY_TY of sym * pos
-  datatype oper = ADD | SUB | MUL | DIV | EQ | NEQ | LT | LE | GT | GE | AND | OR
+structure Common = struct
+ type pos = int and sym = Symbol.symbol
+ datatype oper = ADD | SUB | MUL | DIV | EQ | NEQ | LT | LE | GT | GE | AND | OR
+ datatype 'exp var'
+  = SIMPLE of sym * pos
+  | FIELD of 'exp var' * sym * pos
+  | INDEX of 'exp var' * 'exp * pos
+end
 
-  datatype 'exp var
-   = SIMPLE of sym * pos
-   | FIELD of 'exp var * sym * pos
-   | INDEX of 'exp var * 'exp * pos
+structure AST = struct
+ open Common
+ datatype exp
+  = VAR of var
+  | NIL
+  | INT of int
+  | STR of string * pos
+  | CALL of {func:sym, args:exp list, pos:pos}
+  | OP of {left:exp, oper:oper, right:exp, pos:pos}
+  | REC of { fields:(sym * exp * pos) list, typ:sym, pos:pos}
+  | SEQ of (exp * pos) list
+  | ASSIGN of {var:var, exp:exp, pos:pos}
+  | IF of {test:exp, then':exp, else':exp option, pos:pos}
+  | WHILE of {test:exp, body:exp, pos:pos}
+  | FOR of {var:sym, lo:exp, hi:exp, body:exp, pos:pos}
+  | BREAK of pos
+  | LET of {decs:dec list, body:exp, pos:pos}
+  | ARRAY of {typ:sym, size:exp, init:exp, pos:pos}
 
-  datatype ('body,'exp) dec
-   = FUN_DEC of 'body fundec list
-   | TYPE_DEC of typedec list
-   | VAR_DEC of 'exp vardec
+ and dec
+  = TYPE_DEC of {name:sym, ty:ty, pos:pos} list
+  | VAR_DEC of {name:sym, typ:(sym*pos) option, init:exp, pos:pos}
+  | FUN_DEC of { name:sym, args:field list
+               , result:(sym*pos)option, body:exp, pos:pos
+               } list
 
-  withtype typedec = {name: sym, ty: ty, pos: pos}
-  and 'exp vardec
-   = {name: sym, esc: bool ref, typ: (sym*pos) option, init: 'exp, pos: pos}
-  and 'body fundec
-   = { name: sym, args: field list, result: (sym*pos) option, body: 'body
-     , pos: pos }
+ and ty = NAME_TY of sym*pos | REC_TY of field list | ARRAY_TY of sym*pos
+ withtype var = exp var'
+ and field = {name:sym, typ:sym, pos:pos}
+end
+
+structure IR = struct
+ open Common
+ datatype exp
+  = ARRAY of {typ:sym, size:exp, init:exp}
+  | ASSIGN of {var:var, exp:exp}
+  | BREAK
+  | CALL of {func:sym, args:exp list}
+  | FOR of {var:sym, lo:exp, hi:exp, body:exp}
+  | IF of {test:exp, then':exp}
+  | IFELSE of {test:exp, then':exp, else':exp}
+  | INT of int
+  | NIL
+  | OP of {left:exp, oper:oper, right:exp}
+  | REC of {typ:sym, vals:exp list}
+  | SEQ of exp list
+  | STR of string
+  | VAR of var
+  | WHILE of {test:exp, body:exp}
+ withtype var = exp var'
+
+ structure Ty = struct
+  datatype ty = NIL | INT | STRING | UNIT | RECORD of sym | ARRAY of sym
  end
 
- structure AST = struct
-  open Common
-  datatype exp
-   = VAR of var'
-   | NIL
-   | INT of int
-   | STR of string * pos
-   | CALL of {func: sym, args: exp list, pos: pos}
-   | OP of {left: exp, oper: oper, right: exp, pos: pos}
-   | REC of { fields: (sym * exp * pos) list
-           , typ: sym, pos: pos}
-   | SEQ of (exp * pos) list
-   | ASSIGN of {var: var', exp: exp, pos: pos}
-   | IF of {test: exp, then': exp, else': exp option, pos: pos}
-   | WHILE of {test: exp, body: exp, pos: pos}
-   | FOR of { var: sym, esc: bool ref
-            , lo: exp, hi: exp, body: exp, pos: pos
-            }
-   | BREAK of pos
-   | LET of {decs: dec' list, body: exp, pos: pos}
-   | ARRAY of {typ: sym, size: exp, init: exp, pos: pos}
-  withtype var' = exp var
-  and dec' = (exp,exp) dec
-
-  type dec = dec' and var = var'
- end
-
- structure NoLets = struct
-  open Common
-  datatype exp
-   = VAR of var'
-   | NIL
-   | INT of int
-   | STR of string * pos
-   | CALL of {func: sym, args: exp list}
-   | OP of {left: exp, oper: oper, right: exp}
-   | REC of {fields: (sym * exp) list, typ: sym}
-   | SEQ of exp list
-   | ASSIGN of {var: var', exp: exp}
-   | IF of {test: exp, then': exp, else': exp option}
-   | WHILE of {test: exp, body: exp}
-   | FOR of {var: sym, esc: bool ref, lo: exp, hi: exp, body: exp}
-   | BREAK
-   | ARRAY of {typ: sym, size: exp, init: exp}
-
-  and block
-   = BLOCK of
-    { types: typedec list
-    , vars: exp vardec list
-    , funs: block fundec list
-    , body: exp }
-
-  withtype var' = exp var
-  type var = var'
- end
-
- structure AR = struct
-  open Common
-  datatype exp
-   = VAR of var'
-   | NIL
-   | INT of int
-   | STR of string * pos
-   | CALL of {func: sym, args: exp list}
-   | OP of {left: exp, oper: oper, right: exp}
-   | REC of {fields: (sym * exp) list, typ: sym}
-   | SEQ of exp list
-   | ASSIGN of {var: var', exp: exp}
-   | IF of {test: exp, then': exp, else': exp option}
-   | WHILE of {test: exp, body: exp}
-   | FOR of {var: sym, esc: bool ref, lo: exp, hi: exp, body: exp}
-   | BREAK
-   | ARRAY of {typ: sym, size: exp, init: exp}
-
-  and ar = AR of {parent: ar option, slots: field list}
-  and block = BLOCK of
-   {ar: ar, types: typedec list, funs: block fundec list, body: exp}
-  withtype var' = exp var
-
-  type var = var'
- end
-
- structure Globals = struct
-  open Common
-  datatype exp
-   = VAR of var'
-   | NIL
-   | INT of int
-   | STR of string * pos
-   | CALL of {func: sym, args: exp list}
-   | OP of {left: exp, oper: oper, right: exp}
-   | REC of {fields: (sym * exp) list, typ: sym}
-   | SEQ of exp list
-   | ASSIGN of {var: var', exp: exp}
-   | IF of {test: exp, then': exp, else': exp option}
-   | WHILE of {test: exp, body: exp}
-   | FOR of {var: sym, esc: bool ref, lo: exp, hi: exp, body: exp}
-   | BREAK
-   | ARRAY of {typ: sym, size: exp, init: exp}
-
-  and ar = AR of {parent: ar option, slots: field list}
-  and block = BLOCK of
-   { ar: ar, types: typedec list, funs: block fundec list, body: exp }
-  withtype var' = exp var
-  type var = var'
+ (*
+ 	The `block' field in `vars' refers to where the block where a
+ 	variable is defined or the block defined by a function depending
+ 	on what type of variable it is.
+ *)
+ type block = {vars:sym list, funcs:sym list, up:sym option, body:exp list}
+ type vars = {typ:sym, block:sym} SymTable.table
+ type types = Ty.ty SymTable.table
+ type blocks = block SymTable.table
+ type program = {main:sym, blocks:blocks, types:types, vars:vars}
 end
 
 (*
@@ -248,8 +193,8 @@ structure ASTSexp = struct
        (case else' of NONE => sexp "if" [exp test, exp then']
                     | (SOME e) => sexp "if" [exp test, exp then', exp e])
     | exp (WHILE{test,body,pos}) = sexp "while" [exp body]
-    | exp (FOR{var=v,esc=b,lo,hi,body,pos}) =
-       sexp "for" [fix v, S.BOOL(!b), exp lo, exp hi, exp body]
+    | exp (FOR{var=v,lo,hi,body,pos}) =
+       sexp "for" [fix v, exp lo, exp hi, exp body]
     | exp (BREAK p) = S.SEQ [S.SYM "break"]
     | exp (LET{decs,body,pos}) =
        sexp "let" [S.SEQ(map dec decs), exp body]
@@ -257,27 +202,27 @@ structure ASTSexp = struct
        sexp "array" [fix typ, exp size, exp init]
 
    and dec (FUN_DEC l) =
-        let fun field{name,esc,typ,pos} =
-             S.SEQ [fix name, S.BOOL(!esc), fix typ]
+        let fun field{name,typ,pos} =
+             S.SEQ [fix name, fix typ]
             fun f{name,args,result,body,pos} =
              case result
               of NONE => S.SEQ [fix name, S.SEQ(map field args), exp body]
                | SOME(s,_) =>
                   S.SEQ [fix name, fix s, S.SEQ(map field args), exp body]
         in sexp "fun" (map f l) end
-     | dec (VAR_DEC{name,esc,typ,init,pos}) =
+     | dec (VAR_DEC{name,typ,init,pos}) =
         (case typ
-          of NONE => sexp "var" [fix name, S.BOOL(!esc), exp init]
+          of NONE => sexp "var" [fix name, exp init]
            | SOME (s,_) =>
-              sexp "var" [fix name, S.BOOL(!esc), fix s, exp init])
+              sexp "var" [fix name, fix s, exp init])
      | dec (TYPE_DEC l) =
         let fun tdec{name,ty=t,pos} = S.SEQ [fix name, ty t]
         in sexp "type" (map tdec l) end
 
    and ty (NAME_TY(s,p)) = sexp "name-type" [fix s]
      | ty (REC_TY l) =
-        let fun f {name,esc,typ,pos} =
-             S.SEQ[fix name, S.BOOL(!esc), fix typ]
+        let fun f {name,typ,pos} =
+             S.SEQ[fix name, fix typ]
         in sexp "record-type" (map f l) end
      | ty(ARRAY_TY(s,p)) = sexp "array-type" [fix s]
 
