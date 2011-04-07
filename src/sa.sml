@@ -10,6 +10,7 @@ structure Semantic = struct
              | RECORD of (Symbol.symbol * t) list * unique
              | ARRAY of t * unique
              | NAME of Symbol.symbol * t option ref
+  fun compatible _ = TODO();
  end
 
  structure Value = struct
@@ -42,8 +43,9 @@ structure Semantic = struct
  fun varLookup e n = protect (UndefinedVariable n) (Context.getVar e n)
  fun typeLookup e n = protect (UndefinedVariable n) (Context.getType e n)
 
- fun expect env t exp =
-  if t = (expType env exp) then () else raise TypeError
+ fun expect env ty exp =
+  if Type.compatible (ty,expType env exp) then ()
+  else raise TypeError
 
  and expectMatch env (a,b) =
   case expType env a
