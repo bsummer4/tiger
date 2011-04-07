@@ -8,7 +8,9 @@
 signature SYMBOL = sig
  eqtype symbol
  val mk: string -> symbol
+ val gensym: symbol -> symbol
  val name: symbol -> string
+ val unique: symbol -> string
  val num: symbol -> int
  val compare: symbol * symbol -> order
 end
@@ -22,9 +24,11 @@ structure Symbol:> SYMBOL = struct
  val backward : (int,string) H.hash_table =
   H.mkTable(Word.fromInt, op =) (sizeHint,FAIL)
  type symbol = int
+
+ val compare = Int.compare
  fun name n = H.lookup backward n
  fun num n = n
- val compare = Int.compare
+
  fun mk name =
   case H.find forward name
    of SOME i => i
@@ -34,6 +38,15 @@ structure Symbol:> SYMBOL = struct
                ; H.insert backward (i,name)
                ; i
               end
+
+ fun gensym s =
+  let val i = !nextsym
+  in nextsym := i+1
+   ; H.insert backward (i,name s)
+   ; i
+  end
+
+ fun unique s = String.concat [name s, "_", Int.toString s]
 end
 
 signature SYM_TABLE = sig
@@ -160,10 +173,10 @@ structure ASTSexp = struct
  local
   structure S = Sexp
   open AST
-  val name = Symbol.name
+  val name = Symbol.unique
 
   fun sym s = s
-  val fix = S.SYM o Symbol.name
+  val fix = S.SYM o name
   fun sexp s args = S.SEQ (S.SYM s::args)
   fun opname oper = case oper
      of ADD => "+"  | SUB => "-" | MUL => "*" | DIV => "/" | EQ => "=" 
