@@ -12,7 +12,7 @@ structure IR = struct
 
   type arrays = ty SymTable.table
   type records = (sym * ty) list SymTable.table
-  type procs = {res:ty,args:ty list} list SymTable.table
+  type procs = {res:ty,args:ty list} SymTable.table
 
   fun compatible (a,b) =
    if a=b then true else case (a,b)
@@ -24,18 +24,16 @@ structure IR = struct
  end
 
  datatype exp
-  = ARRAY of {typ:sym, size:texp, init:texp}
+  = ARRAY of {typ:sym, size:texp}
   | ASSIGN of {var:var, exp:texp}
   | BREAK
   | CALL of {func:sym, args:texp list}
-  | FOR of {var:sym, lo:texp, hi:texp, body:texp}
   | IF of {test:texp, then':texp}
   | IFELSE of {test:texp, then':texp, else':texp}
   | INT of int
   | NIL
   | OP of {left:texp, oper:oper, right:texp}
   | REC of {typ:sym, vals:texp list}
-  | SEQ of texp list
   | STR of string
   | VAR of var
   | WHILE of {test:texp, body:texp}
@@ -47,16 +45,102 @@ structure IR = struct
  (*
  	The `block' field in `vars' refers to where the block where a
  	variable is defined or the block defined by a function depending
- 	on what type of variable it is.
+	on what type of variable it is. Note that `args' and `vars'
+	are disjoint sets and that the order of `args' is significant.
  *)
- type block = {vars:sym list, funcs:sym list, up:sym option, body:exp}
+ type block = {args:sym list, vars:sym list, subBlocks:sym list, up:sym option, body:exp}
  type vars = {typ:sym, block:sym} SymTable.table
  type blocks = block SymTable.table
  type program =
   { main:sym
   , blocks:blocks
+  , procs:Type.procs
   , arrays:Type.arrays
   , records:Type.records
   , vars:vars
   }
 end
+
+signature IR_PRINT = sig
+ val print : IR.program -> unit
+end
+
+(*
+	- The IR may not have any nested blocks.
+
+	If these are not true, an TODO exception will be thrown.
+
+	:TODO: Expressions and Statements
+		We don't have to worry about the expression/statement
+		distinction in C. Explain why.
+
+	x := foo>bar
+	%%
+	x = ((strcmp(foo,bar)<0):1?0);	
+*)
+structure IRPrintC:> IR_PRINT = struct
+ (* decArray decRec decProc ; defArray defRec defProc *)
+
+ fun id x = x
+ fun appFmt f s e [] = print e
+   | appFmt f s e (x::xs) =
+      (f x; if xs=[] then () else print s; appFmt f s e xs)
+
+ fun typeStr ty =
+  case ty 
+   of NIL => "void *"
+    | INT => "int"
+	| STRING => "char *"
+	| UNIT => "void"
+	| REC s => Symbol.unique s
+	| ARR s => Symbol.unique s
+	| FUN s => raise Unsupported "First-class functions"
+
+ fun decStruct _ s =
+  let val n = Symbol.unique n
+  in app print ["struct ", n, ";\ntypedef struct ", n, " ", n, ";\n"]
+  end
+
+ val (decArray,decRec) = (decStruct,decStruct);
+
+ fun procHeader {procs,...} s = 
+  case SymTable.look(procs,s) of {res,args} =>
+   ( app print [typeStr res, " ", Symbol.unique s, "("]
+   ; appFmt (print o typeStr) ", " ");\n" args
+   )
+
+ fun defRec p s = TODO()
+ fun defArray p s = TODO()
+ fun printBlock p e = TODO()
+
+ fun defProc p as {blocks,procs,...} s =
+  case (SymTable.look(blocks,s), SymTable.look(procs,s)) of (b,{res,args}) =>
+   ( app print [Symbol.unique res, " ", Symbol.unique s, " ("
+   ; appFmt (fn (ty,name) => app print [typeStr ty, " ", Symbol.unique name])
+      "," ")\n" (ListPair.map id args (#args b))
+   ; print "{\n"
+   ; printBlock p (#body b)
+   ; print "}\n"
+   )
+end
+
+(*
+struct foo_234 { int size; struct bar *elements; }
+struct bar_23 { struct foo a; }
+
+typedef struct foo_234 foo_234;
+typedef struct bar_23 bar_23;
+*)
+
+(*
+	- print type declarations
+	- print function prototypes
+	- print all functions
+		- print variable declarations;
+		- print all expressions.
+
+	typedef struct { int size; int *elements; } bar_9;
+	typedef struct { int size; struct bar_9 *elements; } foo_23;
+end 
+*)
+
