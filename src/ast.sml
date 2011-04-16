@@ -1,79 +1,13 @@
 (*
-	This defines the representation of symbols and symbol tables,
-	the AST representation for tiger code, and functions to output
-	an AST (ASTSexp.toSexp).
+	This defines the AST representation and a utillity struct ASTPrint
+	for printing ASTs.
 *)
 
-(* Symbols are just strings with constant time comparisons. *)
-signature SYMBOL = sig
- eqtype symbol
- val mk: string -> symbol
- val gensym: symbol -> symbol
- val name: symbol -> string
- val unique: symbol -> string
- val num: symbol -> int
- val compare: symbol * symbol -> order
-end
-
-structure Symbol:> SYMBOL = struct
- open Util
- structure H = HashTable
- val (nextsym, sizeHint) = (ref 0, 128)
- val forward : (string,int) H.hash_table =
-  H.mkTable(HashString.hashString, op =) (sizeHint,FAIL)
- val backward : (int,string) H.hash_table =
-  H.mkTable(Word.fromInt, op =) (sizeHint,FAIL)
- type symbol = int
-
- val compare = Int.compare
- fun name n = H.lookup backward n
- fun num n = n
-
- fun mk name =
-  case H.find forward name
-   of SOME i => i
-    | NONE => let val i = !nextsym
-              in nextsym := i+1
-               ; H.insert forward (name,i)
-               ; H.insert backward (i,name)
-               ; i
-              end
-
- fun gensym s =
-  let val i = !nextsym
-  in nextsym := i+1
-   ; H.insert backward (i,name s)
-   ; i
-  end
-
- fun unique s = String.concat [name s, "_", Int.toString s]
-end
-
-signature SYM_TABLE = sig
- type 'a table
- val empty: 'a table
- val enter: 'a table * Symbol.symbol * 'a -> 'a table
- val look: 'a table * Symbol.symbol -> 'a option
-end
-
-structure SymTable:> SYM_TABLE = struct
- type 'a table = 'a IntBinaryMap.map
- val empty = IntBinaryMap.empty
- fun enter(t,k,a) = IntBinaryMap.insert(t,Symbol.num k,a)
- fun look(t,k) = IntBinaryMap.find(t,Symbol.num k)
-end
-
-structure Common = struct
- type pos = int and sym = Symbol.symbol
- datatype oper = ADD | SUB | MUL | DIV | EQ | NEQ | LT | LE | GT | GE | AND | OR
- datatype 'exp var'
-  = SIMPLE of sym * pos
-  | FIELD of 'exp var' * sym * pos
-  | INDEX of 'exp var' * 'exp * pos
-end
-
 structure AST = struct
- open Common
+ type pos = int and sym = Symbol.symbol
+ datatype oper
+  = ADD | SUB | MUL | DIV | EQ | NEQ | LT | LE | GT | GE | AND | OR
+
  datatype exp
   = VAR of var
   | NIL
@@ -91,6 +25,11 @@ structure AST = struct
   | LET of {decs:dec list, body:exp, pos:pos}
   | ARRAY of {typ:sym, size:exp, init:exp, pos:pos}
 
+ and var
+  = SIMPLE of sym * pos
+  | FIELD of var * sym * pos
+  | INDEX of var * exp * pos
+
  and dec
   = TYPE_DEC of {name:sym, ty:ty, pos:pos} list
   | VAR_DEC of {name:sym, typ:(sym*pos) option, init:exp, pos:pos}
@@ -99,74 +38,7 @@ structure AST = struct
                } list
 
  and ty = NAME_TY of sym*pos | REC_TY of field list | ARRAY_TY of sym*pos
- withtype var = exp var'
- and field = {name:sym, typ:sym, pos:pos}
-end
-
-structure IR = struct
- open Common
- datatype exp
-  = ARRAY of {typ:sym, size:exp, init:exp}
-  | ASSIGN of {var:var, exp:exp}
-  | BREAK
-  | CALL of {func:sym, args:exp list}
-  | FOR of {var:sym, lo:exp, hi:exp, body:exp}
-  | IF of {test:exp, then':exp}
-  | IFELSE of {test:exp, then':exp, else':exp}
-  | INT of int
-  | NIL
-  | OP of {left:exp, oper:oper, right:exp}
-  | REC of {typ:sym, vals:exp list}
-  | SEQ of exp list
-  | STR of string
-  | VAR of var
-  | WHILE of {test:exp, body:exp}
- withtype var = exp var'
-
- structure Ty = struct
-  datatype ty = NIL | INT | STRING | UNIT | RECORD of sym | ARRAY of sym
- end
-
- (*
- 	The `block' field in `vars' refers to where the block where a
- 	variable is defined or the block defined by a function depending
- 	on what type of variable it is.
- *)
- type block = {vars:sym list, funcs:sym list, up:sym option, body:exp list}
- type vars = {typ:sym, block:sym} SymTable.table
- type types = Ty.ty SymTable.table
- type blocks = block SymTable.table
- type program = {main:sym, blocks:blocks, types:types, vars:vars}
-end
-
-(*
-	This is a quick approximation of of an s-expression library.
-	A real version of this library should have pretty-printing
-	and parsing.
-*)
-structure Sexp = struct
- datatype sexp = SEQ of sexp list | BOOL of bool | SYM of string
-               | STR of string | INT of int
-
- local
-  fun w s = TextIO.output (TextIO.stdOut,s)
-  fun indent 0 = ()
-    | indent n = (w " "; indent (n-1))
-  fun newline d = (w "\n"; indent d)
-
-  fun printSeq j d [] = ()
-    | printSeq j d (x::[]) = print' j d x
-    | printSeq j d (x::xs) = (print' j d x; w " "; printSeq false d xs)
-  and print' j d (SEQ l) = ( if not j then newline d else ()
-                           ; w "("; printSeq true (1+d) l; w ")")
-    | print' _ d (BOOL true) = w "#t"
-    | print' _ d (BOOL false) = w "#f"
-    | print' _ d (SYM s) = w s
-    | print' _ d (STR s) = (w "\""; w s; w "\"")
-    | print' _ d (INT i) = w (Int.toString i)
- in
-  fun printSexp s = (print' true 0 s; w "\n"; TextIO.flushOut TextIO.stdOut)
- end
+ withtype field = {name:sym, typ:sym, pos:pos}
 end
 
 structure ASTSexp = struct
@@ -179,7 +51,7 @@ structure ASTSexp = struct
   val fix = S.SYM o name
   fun sexp s args = S.SEQ (S.SYM s::args)
   fun opname oper = case oper
-     of ADD => "+"  | SUB => "-" | MUL => "*" | DIV => "/" | EQ => "=" 
+     of ADD => "+"  | SUB => "-" | MUL => "*" | DIV => "/" | EQ => "="
       | NEQ => "<>" | LT => "<"  | LE => "<=" | GT => ">"  | GE => ">="
       | AND => "&"  | OR => "|"
 
