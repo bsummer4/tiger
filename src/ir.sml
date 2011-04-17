@@ -24,7 +24,7 @@ structure IR = struct
  end
 
  datatype exp
-  = ARRAY of {typ:sym, size:texp}
+  = ARR of {size:texp, init:texp}
   | ASSIGN of {var:var, exp:texp}
   | BREAK
   | CALL of {func:sym, args:texp list}
@@ -33,14 +33,14 @@ structure IR = struct
   | INT of int
   | NIL
   | OP of {left:texp, oper:oper, right:texp}
-  | REC of {typ:sym, vals:texp list}
+  | REC of (sym * texp) list
   | STR of string
   | VAR of var
   | WHILE of {test:texp, body:texp}
 
  and oper = ADD | SUB | MUL | DIV | EQ | NEQ | LT | LE | GT | GE | AND | OR
  and var = SIMPLE of sym | FIELD of var * sym | INDEX of var * exp
- withtype texp = {e:exp, ty:sym}
+ withtype texp = {e:exp, ty:ty}
 
  (*
  	The `block' field in `vars' refers to where the block where a
@@ -97,25 +97,34 @@ structure IRPrintC:> IR_PRINT = struct
 	| FUN s => raise Unsupported "First-class functions"
 
  fun decStruct _ s =
-  let val n = Symbol.unique n
-  in app print ["struct ", n, ";\ntypedef struct ", n, " ", n, ";\n"]
+  let val s = Symbol.unique s
+  in app print ["struct ", s, ";\ntypedef struct ", s, " ", s, ";\n"]
   end
 
  val (decArray,decRec) = (decStruct,decStruct);
 
- fun procHeader {procs,...} s = 
+ fun decProc {procs,...} s = 
   case SymTable.look(procs,s) of {res,args} =>
    ( app print [typeStr res, " ", Symbol.unique s, "("]
    ; appFmt (print o typeStr) ", " ");\n" args
    )
 
- fun defRec p s = TODO()
- fun defArray p s = TODO()
+ fun defRec p as {records,...} s = 
+   case SymTab.look(records,x) of rec
+   ( app print ["struct ", Symbol.unique s, " {"]
+   ; appFmt (fn (ty,name) => app print [typeStr ty, " ", Symbol.unique name])
+      "; " ";};\n" (ListPair.map id (#ty (#1 rec)) (#1 rec))
+   )
+   
+ fun defArray p as {arrays,...} s =
+   case SymTable.look(arrays,s) of {init,...} =>
+    app print ["struct ", Symbol.unique s, " { int size; ", Symbol.unique (#2 init), " *elmts;};\n"]
+
  fun printBlock p e = TODO()
 
  fun defProc p as {blocks,procs,...} s =
   case (SymTable.look(blocks,s), SymTable.look(procs,s)) of (b,{res,args}) =>
-   ( app print [Symbol.unique res, " ", Symbol.unique s, " ("
+   ( app print [Symbol.unique res, " ", Symbol.unique s, " ("]
    ; appFmt (fn (ty,name) => app print [typeStr ty, " ", Symbol.unique name])
       "," ")\n" (ListPair.map id args (#args b))
    ; print "{\n"
