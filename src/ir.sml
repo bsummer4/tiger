@@ -49,7 +49,7 @@ structure IR = struct
 	are disjoint sets and that the order of `args' is significant.
  *)
  type block = {args:sym list, vars:sym list, subBlocks:sym list, up:sym option, body:exp}
- type vars = {typ:sym, block:sym} SymTable.table
+ type vars = {typ:ty, block:sym} SymTable.table
  type blocks = block SymTable.table
  type program =
   { main:sym
@@ -86,6 +86,14 @@ structure IRPrintC:> IR_PRINT = struct
    | appFmt f s e (x::xs) =
       (f x; if xs=[] then () else print s; appFmt f s e xs)
 
+ fun appAlt f g [] = ()
+   | appAlt f g (x::xs) = (f x; appAlt g f xs)
+
+ fun opname oper = case oper
+    of ADD => "+"  | SUB => "-" | MUL => "*" | DIV => "/" | EQ => "=="
+	 | NEQ => "!=" | LT => "<"  | LE => "<=" | GT => ">"  | GE => ">="
+	 | AND => "&&" | OR => "||" 
+
  fun typeStr ty =
   case ty 
    of NIL => "void *"
@@ -107,7 +115,7 @@ structure IRPrintC:> IR_PRINT = struct
   case SymTable.look(procs,s) of {res,args} =>
    ( app print [typeStr res, " ", Symbol.unique s, "("]
    ; appFmt (print o typeStr) ", " ");\n" args
-   )
+   )  
 
  fun defRec p as {records,...} s = 
    case SymTab.look(records,x) of rec
@@ -131,7 +139,57 @@ structure IRPrintC:> IR_PRINT = struct
    ; printBlock p (#body b)
    ; print "}\n"
    )
+
+ fun printExp p e = 
+  case e 
+   of ARR{size,init} => TODO() (* arr_name.elements[exp] *)
+    | (ASSIGN{var, exp}) => (printVar var; print " = ", printExp exp, print ";") 
+    | BREAK => print "break;\n" 
+    | (CALL{func, args}) => TODO() 
+	(* func_name(arg1_exp,...argN_exp) , need "parent" exp to know whether or not to print semicolon *)
+    | (IF{test, then'}) => 
+  	   appAlt print printExp ["if (", (#e test), ") {\n", (#e then'), "}\n"]
+    | (IFELSE{test, then', else'}) =>
+	   appAlt print printExp ["if (", test, ") {\n", (#e then'), "}\nelse {", (#e else'), "}\n"]
+    | (INT i) => app print [" ", (Int.toString i), " "]
+    | NIL => print "null"
+    | (OP{left, oper, right}) => 
+	   case (left, right) 
+	    of (INT i1, INT i2) => 
+	       app print [" ", (Int.toString left), (opname oper), (Int.toString right), " "]
+         | (STR s1, STR s2) => 
+		   app print [" (strcmp(\"", s1, "\",\"", s2, "\")", (opname oper), "0 ? 1:0) "]
+         | (VAR v2, VAR v2) => TODO() (* find type of v1,v2 then print appropriate expression *)
+		 | (INT i, VAR v) => (app print [" ", (Int.toString i), (opname oper)]; printVar v; print " ")
+	     | (VAR v, INT i) => (print " "; printVar v; app print [(opname oper), (Int.toString i), " "])
+	     | (STR s, VAR v) => 
+		    ( app print [" (strcmp(\"", test, "\","]
+			; printVar v
+			; app print [")", (opname oper), "0 ? 1:0) "]
+			) 
+		 | (VAR v, STR s) =>  
+		    ( print " (strcmp("
+			; printVar v
+			; app print [",\"", s, "\")", (opname oper), "0 ? 1:0) "]
+			)
+		 | (_ , _) => raise Bad_op_exp "Invalid operation expression"
+    | (REC fs) => TODO()
+    | (STR s) => app print ["\"", s, "\""]
+    | (VAR v) => printVar v
+    | (WHILE{test,body}) => 
+	   appAlt print printTExp ["while (", test, ") {\n", body, "}\n"]
+
+ fun printVar v
+  case v
+   of SIMPLE s => print (Symbol.unique s)
+    | FIELD (v',s) => (printVar v'; print "."; print (Symbol.unique s))
+    | INDEX (v',e) => (printVar v'; print ".elts["; printExp e; print "]")
+
+ fun print p = 
+    
+
 end
+
 
 (*
 struct foo_234 { int size; struct bar *elements; }
