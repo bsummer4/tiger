@@ -6,7 +6,7 @@
 structure AST = struct
  type pos = int and sym = Symbol.symbol
  datatype oper
-  = ADD | SUB | MUL | DIV | EQ | NEQ | LT | LE | GT | GE | AND | OR
+  = ADD | SUB | MUL | DIV | AND | OR | EQ | NEQ | LT | LE | GT | GE 
 
  datatype exp
   = VAR of var

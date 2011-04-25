@@ -1,10 +1,10 @@
 (*
 	This file defines the code to implement the static analysis
 	phase of the complier. The function `Semantic.translate' takes
-	a AST representation of a program (`AST.exp') and produces an
-	IR representation of the same program (`IR.program'). Exceptions
-	will be thrown if there is a type error, or an undefined reference
-	to a symbol or value.
+	a AST expression (`AST.exp') and produces an IR representation
+	of the same program (`IR.program'). Exceptions will be thrown
+	if there is a type error, or an undefined reference to a symbol
+	or value.
 
 	One of the things that happens in this pass is that all names
 	are made globally unique using the `Symbol.gensym' procedure. From
@@ -59,15 +59,41 @@ structure Semantic = struct
   fun getVar (_,{ty,var},_) sym = ST.look(var,sym)
   type s=State.state;
 
-  datatype operClass = INT_OP | CMP_OP
+  datatype operClass = INT_OP | CMP_OP | EQ_OP
   fun operClassify oper =
-   if mem oper [AST.ADD,AST.SUB,AST.MUL,AST.DIV]
-   then INT_OP else CMP_OP
+   local open AST in
+    if mem oper [ADD,SUB,MUL,DIV,AND,OR] then INT_OP
+    else if mem oper [EQ,NEQ] then EQ_OP
+    else CMP_OP
+   end
+
+  fun assertTy t t' = if Type.Compatible(t,t') then () else raise TypeError
+  fun assertTy' [] t' = raise TypeError
+    | assertTy' (t::ts) t' = if Type.Compatible(t,t') then () else assertTy' ts
 
   fun cvt (s:s,exp) =
-   let fun rec' {fields,typ,pos} = TODO()
-       fun arr {typ,size,init,pos} = TODO()
-       fun seq es = TODO()
+   let
+    fun rec' {fields,typ,pos} = TODO()
+    fun arr {typ,size,init,pos} = TODO()
+    fun seq es = TODO()
+
+    fun ifthen' (s:s) (c,t) =
+     let val rtype = expType env then'
+     in expect env Type.INT test
+      ; case else' of (SOME elseExp) => (expect env rtype elseExp; rtype)
+                    | NONE => Type.NIL
+     end
+
+    fun oper (o',l,r) =
+     let val (s',[(lty,le),(rty,re)]) = cvts s [l,r]
+     in assertTy lty rty
+      ; case operClass o'
+         of INT_OP => assertTy INT lty
+          | CMP_OP => assertTy' [INT,STR] lty
+          | EQ_OP => ()
+      ; (s',{ty=INT,e=OP{oper=cvtop o',left=l,right=r}})
+     end
+
    in case exp
        of AST.NIL => (s,{ty=IR.Type.NIL,e=IR.NIL})
         | AST.BREAK _ => (s,{ty=IR.Type.UNIT,e=IR.BREAK})
@@ -76,6 +102,7 @@ structure Semantic = struct
         | AST.SEQ es => seq (map #1 es)
         | AST.REC r => rec' r
         | AST.ARRAY a => arr a
+        | AST.OP {left,op',right,pos} => oper (op',left,right)
         | _ => TODO()
    end
  end
@@ -112,13 +139,6 @@ end
       | CMP_OP => expectMatch env (left,right)
   ; Type.INT
   )
-
- and ifType (s:s) {test,then',else',pos} =
-  let val rtype = expType env then'
-  in expect env Type.INT test
-   ; case  else' of (SOME elseExp) => (expect env rtype elseExp; rtype)
-                 | NONE => Type.NIL
-  end
 
  and recType (s:s) {fields, typ, pos} =
   let fun names ((a,_),(b,_)) = (a,b)
