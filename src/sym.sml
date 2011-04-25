@@ -34,6 +34,7 @@ signature SYM_TABLE = sig
  val empty: 'a table
  val enter: 'a table * symbol * 'a -> 'a table
  val look: 'a table * symbol -> 'a
+ val app: 'a table -> (sym -> unit) -> unit
 end
 
 structure Symbol:> SYMBOL = struct
