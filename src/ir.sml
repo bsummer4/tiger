@@ -41,7 +41,7 @@ structure IR = struct
 
  and oper = ADD | SUB | MUL | DIV | EQ | NEQ | LT | LE | GT | GE | AND | OR
  and var = SIMPLE of sym | FIELD of var * sym | INDEX of var * exp
- withtype texp = {e:exp, ty:ty}
+ withtype texp = {e:exp, ty:Type.ty}
 
  (*
  	The `block' field in `vars' refers to where the block where a
@@ -50,7 +50,7 @@ structure IR = struct
 	are disjoint sets and that the order of `args' is significant.
  *)
  type block = {args:sym list, vars:sym list, subBlocks:sym list, up:sym option, body:exp}
- type vars = {typ:ty, block:sym} SymTable.table
+ type vars = {typ:Type.ty, block:sym} SymTable.table
  type blocks = block SymTable.table
  type program =
   { main:sym
@@ -79,6 +79,7 @@ end
 	%%
 	x = ((strcmp(foo,bar)<0):1?0);	
 *)
+(*
 structure IRPrintC:> IR_PRINT = struct
  (* decArray decRec decProc ; defArray defRec defProc *)
 
@@ -212,3 +213,4 @@ typedef struct bar_23 bar_23;
 end 
 *)
 
+*)
