@@ -36,7 +36,6 @@ structure IR = struct
   | REC of (sym * texp) list
   | SEQ of texp list
   | STR of string
-  | SEQ of texp list 
   | VAR of var
   | WHILE of {test:texp, body:texp}
  and oper = ADD | SUB | MUL | DIV | EQ | NEQ | LT | LE | GT | GE | AND | OR
