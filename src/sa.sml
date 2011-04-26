@@ -19,16 +19,16 @@
 		  current block.
 		- A set unames for all sub-blocks defined so far within
 		  the current block.
-		- A mapping from variable names in the current lexical scope to their
-		  unames.
-		- A mapping from type names in the current lexical scope to their
-		  values.
+		- A mapping from variable names in the current lexical
+		  scope to their unames.
+		- A mapping from type names in the current lexical scope
+		  to their values.
 		- Everything in IR.program except `#main'. We just set main to
 		  Symbol.empty until we are done.
 *)
 
 structure Semantic = struct
- local open Util in
+ local open Util open IR in
 
   type sym = Symbol.symbol
   structure ST = SymTable
@@ -36,10 +36,10 @@ structure Semantic = struct
   exception TypeError
 
   structure State = struct
-   type scope = { ty:IR.Type.ty ST.table, var:sym ST.table }
+   type scope = { ty:Type.ty ST.table, var:sym ST.table }
    type blockState = { name:sym, parent:sym option, vars:sym list
                      , subBlocks:sym list }
-   type state = blockState * scope * IR.program
+   type state = blockState * scope * program
 
    fun mkBlock s p =
     { name=Symbol.gensym s, parent=p, vars=[], subBlocks=[] } : blockState
@@ -49,7 +49,7 @@ structure Semantic = struct
 
    val emptyProgram =
     { main=Symbol.empty, blocks=ST.empty, arrays=ST.empty, records=ST.empty
-    , vars=ST.empty } : IR.program
+    , vars=ST.empty, procs=ST.empty } : program
   end
 
   (* Convenience Functions *)
@@ -61,22 +61,46 @@ structure Semantic = struct
 
   datatype operClass = INT_OP | CMP_OP | EQ_OP
   fun operClassify oper =
-   local open AST in
+   let open AST in
     if mem oper [ADD,SUB,MUL,DIV,AND,OR] then INT_OP
     else if mem oper [EQ,NEQ] then EQ_OP
     else CMP_OP
    end
 
-  fun assertTy t t' = if Type.Compatible(t,t') then () else raise TypeError
+  fun assertTy t t' = if Type.compatible(t,t') then () else raise TypeError
   fun assertTy' [] t' = raise TypeError
-    | assertTy' (t::ts) t' = if Type.Compatible(t,t') then () else assertTy' ts
+    | assertTy' (t::ts) t' =
+       if Type.compatible(t,t') then () else assertTy' ts t'
+
+  fun pmap f (p:s) al =
+   let fun r acc [] = acc
+         | r (p,x'l) (x::xs) =
+            case f (p,x) of (p',x') =>
+             r (p',x'::x'l) xs
+   in r (p,[]) al
+   end
 
   fun cvt (s:s,exp) =
    let
     fun rec' {fields,typ,pos} = TODO()
     fun arr {typ,size,init,pos} = TODO()
     fun seq es = TODO()
+    fun op' (op',l,r) = TODO()
+   in case exp
+       of AST.NIL => (s,{ty=Type.NIL,e=NIL})
+        | AST.BREAK _ => (s,{ty=Type.UNIT,e=BREAK})
+        | AST.INT i => (s,{ty=Type.INT,e=INT i})
+        | AST.STR (str,p) => (s,{ty=Type.STRING,e=STR str})
+        | AST.SEQ es => seq (map #1 es)
+        | AST.REC r => rec' r
+        | AST.ARRAY a => arr a
+        | AST.OP {left,oper,right,pos} => op' (oper,left,right)
+        | _ => TODO()
+   end
+ end
+end
 
+(*
     fun ifthen' (s:s) (c,t) =
      let val rtype = expType env then'
      in expect env Type.INT test
@@ -94,21 +118,6 @@ structure Semantic = struct
       ; (s',{ty=INT,e=OP{oper=cvtop o',left=l,right=r}})
      end
 
-   in case exp
-       of AST.NIL => (s,{ty=IR.Type.NIL,e=IR.NIL})
-        | AST.BREAK _ => (s,{ty=IR.Type.UNIT,e=IR.BREAK})
-        | AST.INT i => (s,{ty=IR.Type.INT,e=IR.INT i})
-        | AST.STR (str,p) => (s,{ty=IR.Type.STRING,e=IR.STR str})
-        | AST.SEQ es => seq (map #1 es)
-        | AST.REC r => rec' r
-        | AST.ARRAY a => arr a
-        | AST.OP {left,op',right,pos} => oper (op',left,right)
-        | _ => TODO()
-   end
- end
-end
-
-(*
  fun expect (s:s) ty exp =
   if Type.compatible (ty,expType env exp) then ()
   else raise TypeError
