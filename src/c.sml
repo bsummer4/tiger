@@ -8,7 +8,7 @@ structure C = struct
 
  structure Type = struct
   datatype ty
-   = VOID_PTR | INT | STRING | VOID | REC of sym | ARR of sym
+   = VOID_PTR | INT | STR | VOID | REC of sym | ARR of sym
 
   type arrays = ty SymTable.table
   type records = (sym * ty) list SymTable.table

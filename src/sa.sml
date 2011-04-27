@@ -28,7 +28,10 @@
 *)
 
 structure Semantic = struct
- local open Util open IR in
+ local open Util in
+  structure A = AST
+  structure I = IR
+  structure T = IR.Type
 
   type sym = Symbol.symbol
   structure ST = SymTable
@@ -36,10 +39,10 @@ structure Semantic = struct
   exception TypeError
 
   structure State = struct
-   type scope = { ty:Type.ty ST.table, var:sym ST.table }
+   type scope = { ty:T.ty ST.table, var:sym ST.table }
    type blockState = { name:sym, parent:sym option, vars:sym list
                      , subBlocks:sym list }
-   type state = blockState * scope * program
+   type state = blockState * scope * I.program
 
    fun mkBlock s p =
     { name=Symbol.gensym s, parent=p, vars=[], subBlocks=[] } : blockState
@@ -49,7 +52,7 @@ structure Semantic = struct
 
    val emptyProgram =
     { main=Symbol.empty, blocks=ST.empty, arrays=ST.empty, records=ST.empty
-    , vars=ST.empty, procs=ST.empty } : program
+    , vars=ST.empty, procs=ST.empty } : I.program
   end
 
   (* Convenience Functions *)
@@ -57,45 +60,89 @@ structure Semantic = struct
   fun bindVal (b,{ty,var},p) name v = (b,{ty=ty,var=ST.enter(var,name,v)},p)
   fun getType (_,{ty,var},_) sym = ST.look(ty,sym)
   fun getVar (_,{ty,var},_) sym = ST.look(var,sym)
-  type s=State.state;
+  type s=State.state
 
   datatype operClass = INT_OP | CMP_OP | EQ_OP
   fun operClassify oper =
-   let open AST in
-    if mem oper [ADD,SUB,MUL,DIV,AND,OR] then INT_OP
-    else if mem oper [EQ,NEQ] then EQ_OP
-    else CMP_OP
+   let val (i,e,c) = (INT_OP,EQ_OP,CMP_OP)
+   in case oper of A.ADD=>i | A.SUB=>i | A.MUL=>i | A.DIV=>i | A.AND=>i
+                 | A.OR=>i | A.LT=>c | A.LE=>c | A.GT=>e | A.GE=>e
+                 | A.EQ=>e | A.NEQ=>e
    end
 
-  fun assertTy t t' = if Type.compatible(t,t') then () else raise TypeError
+  fun irop op' = case op'
+   of A.ADD=>I.ADD | A.SUB=>I.SUB | A.MUL=>I.MUL | A.DIV=>I.DIV
+    | A.AND=>I.AND | A.OR=>I.OR   | A.LT=>I.LT   | A.LE=>I.LE
+    | A.GT=>I.GT   | A.GE=>I.GE   | A.EQ=>I.EQ
+
+  fun assertTy t t' = if T.compatible(t,t') then () else raise TypeError
   fun assertTy' [] t' = raise TypeError
     | assertTy' (t::ts) t' =
-       if Type.compatible(t,t') then () else assertTy' ts t'
+       if T.compatible(t,t') then () else assertTy' ts t'
 
-  fun pmap f (p:s) al =
+  fun smap f (s:s) al =
    let fun r acc [] = acc
-         | r (p,x'l) (x::xs) =
-            case f (p,x) of (p',x') =>
-             r (p',x'::x'l) xs
-   in r (p,[]) al
+         | r (s,x'l) (x::xs) =
+            case f (s,x) of (s',x') =>
+             r (s',x'::x'l) xs
+   in r (s,[]) al
    end
 
-  fun cvt (s:s,exp) =
+  (* cvt :: (s,exp) -> (s,exp) *)
+  fun cvt (s:s as (bs,scope,pgm), exp) =
    let
-    fun rec' {fields,typ,pos} = TODO()
-    fun arr {typ,size,init,pos} = TODO()
-    fun seq es = TODO()
-    fun op' (op',l,r) = TODO()
+
+    val (getType,getVar) = (getType s,getVar s)
+
+    fun rec' {fields,typ,pos} =
+     let val rty = case getType typ of T.REC r => r | _ => raise TypeError
+         val etys = ST.look (#arrays pgm,rty)
+     in TODO()
+        (*case smap (fn ... => cvt ...) s fields of (s',fields') => TODO()*)
+     end
+
+    fun arr {typ,size,init,pos} =
+     let val aty = case getType typ of T.ARR a => a | _ => raise TypeError
+         val ety = ST.look (#arrays pgm,aty)
+     in case smap cvt s [size,init]
+         of (s',[s as{ty=tys,e=es}, i as{ty=tyi,e=ei}]) =>
+             if tys<>T.INT orelse tyi<>ety then raise TypeError
+             else (s',{ty=T.ARR aty,e=I.ARR{size=s,init=i}})
+          | _ => raise Match
+     end
+
+    fun op' (op',l,r) = case smap cvt s [l,r]
+     of (s',[l' as{ty=lty,e=le}, r' as{ty=rty,e=re}]) =>
+         ( assertTy lty rty
+         ; case operClassify op'
+            of INT_OP => assertTy T.INT lty
+             | CMP_OP => assertTy' [T.INT,T.STR] lty
+             | EQ_OP => ()
+         ; (s',{ty=T.INT,e=I.OP{oper=irop op',left=l',right=r'}})
+         )
+      | _ => raise Match
+
+    fun seq es = case smap cvt s es
+     of (s',[]) => (s',{ty=T.UNIT,e=I.SEQ[]})
+      | (s',el) => case last el of {ty,e} =>
+         (s',{ty=ty,e=I.SEQ el})
+
    in case exp
-       of AST.NIL => (s,{ty=Type.NIL,e=NIL})
-        | AST.BREAK _ => (s,{ty=Type.UNIT,e=BREAK})
-        | AST.INT i => (s,{ty=Type.INT,e=INT i})
-        | AST.STR (str,p) => (s,{ty=Type.STRING,e=STR str})
-        | AST.SEQ es => seq (map #1 es)
-        | AST.REC r => rec' r
-        | AST.ARRAY a => arr a
-        | AST.OP {left,oper,right,pos} => op' (oper,left,right)
-        | _ => TODO()
+       of A.NIL => (s,{ty=T.NIL,e=I.NIL})
+        | A.BREAK _ => (s,{ty=T.UNIT,e=I.BREAK})
+        | A.INT i => (s,{ty=T.INT,e=I.INT i})
+        | A.STR (str,p) => (s,{ty=T.STR,e=I.STR str})
+        | A.SEQ es => seq (map #1 es)
+        | A.REC r => rec' r
+        | A.ARRAY a => arr a
+        | A.OP {left,oper,right,pos} => op' (oper,left,right)
+        | A.VAR var => TODO()
+        | A.CALL {func,args,pos} => TODO()
+        | A.ASSIGN {var,exp,pos} => TODO()
+        | A.IF {test,then',else',pos} => TODO()
+        | A.WHILE {test,body,pos} => TODO()
+        | A.FOR {var,lo,hi,body,pos} => TODO()
+        | A.LET {decs,body,pos} => TODO()
    end
  end
 end
@@ -103,9 +150,9 @@ end
 (*
     fun ifthen' (s:s) (c,t) =
      let val rtype = expType env then'
-     in expect env Type.INT test
+     in expect env T.INT test
       ; case else' of (SOME elseExp) => (expect env rtype elseExp; rtype)
-                    | NONE => Type.NIL
+                    | NONE => T.NIL
      end
 
     fun oper (o',l,r) =
@@ -113,48 +160,48 @@ end
      in assertTy lty rty
       ; case operClass o'
          of INT_OP => assertTy INT lty
-          | CMP_OP => assertTy' [INT,STR] lty
+          | CMP_OP => assertTy' [T.INT,T.STR] lty
           | EQ_OP => ()
       ; (s',{ty=INT,e=OP{oper=cvtop o',left=l,right=r}})
      end
 
  fun expect (s:s) ty exp =
-  if Type.compatible (ty,expType env exp) then ()
+  if T.compatible (ty,expType env exp) then ()
   else raise TypeError
 
  and expectMatch (s:s) (a,b) =
   case expType env a
-   of Type.UNIT => raise TypeError
+   of T.UNIT => raise TypeError
     | aType => expect env aType b
 
  and varType (s:s) var =
   case var
-   of AST.SIMPLE(sym,pos) => getVar env sym
-    | AST.FIELD(var,sym,pos) =>
+   of A.SIMPLE(sym,pos) => getVar env sym
+    | A.FIELD(var,sym,pos) =>
        (case varType env var
-         of Type.REC(flist,u) =>
+         of T.REC(flist,u) =>
              (case List.find (fn (field,_) => field=sym) flist
                of SOME(_,ty) => ty
                 | NONE => raise TypeError)
           | _ => raise TypeError)
-    | AST.INDEX(var,exp,pos) =>
-       ( expect env Type.INT exp
-       ; case varType env var of Type.ARR (ty,u) => ty | _ => raise TypeError
+    | A.INDEX(var,exp,pos) =>
+       ( expect env T.INT exp
+       ; case varType env var of T.ARR (ty,u) => ty | _ => raise TypeError
        )
 
- and operType (s:s) {left,right,oper,pos} =
+ and operType {left,right,oper,pos} =
   ( case operClassify oper
-     of INT_OP => app (expect env Type.INT) [left,right]
+     of INT_OP => app (expect env T.INT) [left,right]
       | CMP_OP => expectMatch env (left,right)
-  ; Type.INT
+  ; T.INT
   )
 
- and recType (s:s) {fields, typ, pos} =
+ and recType (s:s) {fields,typ,pos} =
   let fun names ((a,_),(b,_)) = (a,b)
       val sort = insertionSort (Symbol.compare o names)
       fun match ab bc = sort ab = sort bc
       val ty = getType env typ
-      fun extractFields (Type.RECORD(fields,_)) = fields
+      fun extractFields (T.RECORD(fields,_)) = fields
         | extractFields _ = raise TypeError
   in
    if match (map (fn(sym,e,_)=>(sym,expType env e)) fields)
@@ -165,24 +212,24 @@ end
 
  and arrType (s:s) {typ,size,init,pos} =
   case getType env typ of ty =>
-   ( expect env Type.INT size
-   ; expect env (case ty of Type.ARR(t,_)=>t | _=>raise TypeError) init
+   ( expect env T.INT size
+   ; expect env (case ty of T.ARR(t,_)=>t | _=>raise TypeError) init
    ; ty )
 
  and expType (s:s) exp =
   case exp
    of
-    | AST.ASSIGN {var,exp,pos} => (expect env (varType env var) exp; Type.NIL)
-    | AST.SEQ [] => Type.NIL
-    | AST.SEQ el => last (map ((expType env) o #1) el)
-    | AST.LET {decs,body,pos} => TODO()
-    | AST.VAR v => varType env v
-    | AST.IF e => ifType env e
-    | AST.REC r => recType env r
-    | AST.ARRAY a => arrType env a
-    | AST.WHILE w => TODO()
-    | AST.FOR f => TODO()
-    | AST.OP oper => operType env oper
-    | AST.CALL c => TODO()
+    | A.ASSIGN {var,exp,pos} => (expect env (varType env var) exp; T.NIL)
+    | A.SEQ [] => T.NIL
+    | A.SEQ el => last (map ((expType env) o #1) el)
+    | A.LET {decs,body,pos} => TODO()
+    | A.VAR v => varType env v
+    | A.IF e => ifType env e
+    | A.REC r => recType env r
+    | A.ARRAY a => arrType env a
+    | A.WHILE w => TODO()
+    | A.FOR f => TODO()
+    | A.OP oper => operType env oper
+    | A.CALL c => TODO()
 end
 *)

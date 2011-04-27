@@ -8,7 +8,7 @@ structure IR = struct
 
  structure Type = struct
   datatype ty
-   = NIL | INT | STRING | UNIT | REC of sym | ARR of sym | FUN of sym
+   = NIL | INT | STR | UNIT | REC of sym | ARR of sym | FUN of sym
 
   type arrays = ty SymTable.table
   type records = (sym * ty) list SymTable.table
@@ -49,7 +49,7 @@ structure IR = struct
 	are disjoint sets and that the order of `args' is significant.
  *)
  type block = {args:sym list, vars:sym list, subBlocks:sym list, up:sym option, body:texp} 
- type vars = {typ:Type.ty, block:sym} SymTable.table
+ type vars = {typ:Type.ty, block:sym, ref':bool} SymTable.table
  type blocks = block SymTable.table
  type program =
   { main:sym
@@ -99,7 +99,7 @@ structure IRPrintC:> IR_PRINT = struct
   case ty 
    of NIL => "void *"
     | INT => "int"
-	| STRING => "char *"
+	| STR => "char *"
 	| UNIT => "void"
 	| REC s => Symbol.unique s
 	| ARR s => Symbol.unique s
