@@ -86,9 +86,6 @@ structure CPrint (*:> C_PRINT *) = struct
    | appFmt f s e (x::xs) =
       (f x; if xs=[] then () else print s; appFmt f s e xs)
 
- fun appAlt f g [] = ()
-   | appAlt f g (x::xs) = (f x; appAlt g f xs)
-
  fun opname oper = case oper
     of ADD => "+"  | SUB => "-" | MUL => "*" | DIV => "/" | EQ => "=="
 	 | NEQ => "!=" | LT => "<"  | LE => "<=" | GT => ">"  | GE => ">="
@@ -294,17 +291,3 @@ structure CPrint (*:> C_PRINT *) = struct
    ) 
 
 end
-
-
-(*
-	- print type declarations
-	- print function prototypes
-	- print all functions
-		- print variable declarations;
-		- print all expressions.
-
-	typedef struct { int size; int *elements; } bar_9;
-	typedef struct { int size; struct bar_9 *elements; } foo_23;
-end 
-
-*)
