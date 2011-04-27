@@ -1,5 +1,6 @@
 structure Util = struct
  val FAIL = Fail "This shouldn't ever happen"
+ fun fuck() = raise FAIL
 
  fun range n =
   let fun r sofar i = if i<0 then sofar else r (i::sofar) (i-1)

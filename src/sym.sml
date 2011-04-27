@@ -88,6 +88,6 @@ structure SymTable = struct
     | (SOME x) => x
 end
 
+structure Symbol = Symbol (*:> SYMBOL*)
 signature SYM_TABLE' = SYM_TABLE where type symbol=Symbol.symbol
-structure Symbol = Symbol:> SYMBOL
-structure SymTable = SymTable:> SYM_TABLE'
+structure SymTable = SymTable(*:> SYM_TABLE'*)
