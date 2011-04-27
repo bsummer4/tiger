@@ -42,7 +42,7 @@ structure C = struct
   | NULL
 
  and oper = ADD | SUB | MUL | DIV | EQ | NEQ | LT | LE | GT | GE | AND | OR
- and var = SIMPLE of sym | FIELD of var * sym | INDEX of var * exp
+ and var = SIMPLE of sym | FIELD of var * sym | INDEX of var * texp
  withtype texp = {e:exp, ty:Type.ty}
 
  (*
@@ -64,14 +64,15 @@ structure C = struct
   }
 end
 
-signature IR_PRINT = sig
- val print : IR.program -> unit
+signature C_PRINT = sig
+ val printProg : C.program -> unit
 end
 
 (*
 	If these are not true, an TODO exception will be thrown.
 *)
-structure IRPrintC:> IR_PRINT = struct
+structure CPrint (*:> C_PRINT *) = struct
+ open C
  (* decArray decRec decProc ; defArray defRec defProc *)
 
  fun id x = x
@@ -94,17 +95,19 @@ structure IRPrintC:> IR_PRINT = struct
 	 | AND => "&&" | OR => "||" 
 
  fun typeStr ty =
-  case ty 
-   of VOID_PTR => "void *"
-    | INT => "int"
-	| STRING => "char *"
-	| UNIT => "void"
-	| REC s => Symbol.unique s
-	| ARR s => Symbol.unique s
+  let open Type in
+   case ty 
+    of Type.VOID_PTR => "void *"
+     | Type.INT => "int"
+	 | Type.STRING => "char *"
+	 | Type.VOID => "void"
+	 | Type.REC s => Symbol.unique s
+	 | Type.ARR s => Symbol.unique s
+  end
 
  fun unique' s = Symbol.unique (Symbol.mk s)
 
- fun printStdLib = app print 
+ fun printStdLib() = app print 
   [(* print *)
    "void ", unique' "print", "(char *str) {\n", 
    "  printf(\"%s\", str);\n",
@@ -115,17 +118,17 @@ structure IRPrintC:> IR_PRINT = struct
    "}\n\n",
    (* flush *)
    "void ", unique' "flush", "() {\n",
-   "  fflush();\n",
+   "  fflush(stdout);\n",
    "}\n\n",
    (* getchar *)
    "char *", unique' "getchar", "() {\n",
    "  char *str=(char *)malloc(sizeof(char) * 2);\n",
    "  if(str == NULL) {\n",
-   "    fprintf(stderr,\"no memory\n\");\n",
+   "    fprintf(stderr,\"no memory\\n\");\n",
    "    exit(1);\n",
    "  }\n",
    "  str[0] = getchar();\n",
-   "  str[1] = '\0';\n", 
+   "  str[1] = '\\0';\n", 
    "  return str;\n",
    "}\n\n",
    (* ord *)
@@ -145,7 +148,7 @@ structure IRPrintC:> IR_PRINT = struct
    "  if (i > 255) exit(0);\n",
    "  else {\n",
    "    str[0] = (char)i;\n",
-   "    str[1] = '\0';\n",
+   "    str[1] = '\\0';\n",
    "  }\n",
    "  return str;\n",
    "}\n\n",
@@ -155,7 +158,7 @@ structure IRPrintC:> IR_PRINT = struct
    "}\n\n",
    (* substring *)
    "char *", unique' "substring", "(char *str, int start, int n) {\n",
-   "  char *sub = (char *)malloc(sizeof(char) * (n+1));\n",
+   "  char *sub = malloc(n+1);\n",
    "  if (sub == NULL) {\n",
    "    fprintf(stderr,\"no memory\");\n",
    "    exit(1);\n",
@@ -166,7 +169,7 @@ structure IRPrintC:> IR_PRINT = struct
    (* concat *)
    "char *", unique' "concat", "(char *str1, char *str2) {\n",
    "  int length = strlen(str1) + strlen(str2) + 1;\n",
-   "  char new_str = (char *)malloc(sizeof(char) * length);\n",
+   "  char *new_str = malloc(length);\n",
    "  if (new_str == NULL) {\n",
    "    fprintf(stderr,\"no memory\");\n",
    "    exit(1);\n",
@@ -181,7 +184,7 @@ structure IRPrintC:> IR_PRINT = struct
    (* exit *)   
    "void ", unique' "exit", "(int i) {\n",
    "  exit(i);\n",
-   "}\n\n",
+   "}\n\n"
   ] 
 
  fun decStruct _ s =
@@ -189,99 +192,104 @@ structure IRPrintC:> IR_PRINT = struct
    in app print ["struct ", s, ";\ntypedef struct ", s, " *", s, ";\n"]
   end
 
- val (decArray,decRec) = (decStruct,decStruct);
+ val (decArr,decRec) = (decStruct,decStruct)
 
- fun decProc p as {procs,...} s = 
+ fun decProc (p:program as {procs,...}) s = 
   case SymTable.look(procs,s) of {res,args} =>
    ( app print [typeStr res, " ", Symbol.unique s, "("]
    ; appFmt (print o typeStr) ", " ");\n" args
    )  
 
- fun defRec p as {records,...} s = 
-   case SymTab.look(records,x) of rec
+ fun defRec (p:program as {records,...}) s = 
+   case SymTable.look(records,s) of rec' =>
    ( app print ["struct ", Symbol.unique s, " {"]
-   ; appFmt (fn (ty,name) => app print [typeStr ty, " ", Symbol.unique name])
-      "; " ";};\n" (ListPair.map id (#ty (#1 rec)) (#1 rec))
+   ; appFmt (fn (name, ty) => app print [typeStr ty, " ", Symbol.unique name])
+      "; " ";};\n" rec'
+     (* ListPair.map id (#ty (#1 rec')) (#1 rec')) *)
    )
    
- fun defArray p as {arrays,...} s =
-   case SymTable.look(arrays,s) of {init,...} =>
-    app print ["struct ", Symbol.unique s, " { int size; ", Symbol.unique (#2 init), " *elmts;};\n"]
+ fun defArr (p:program as {arrays,...}) s =
+   case SymTable.look(arrays,s) of ty =>
+    app print ["struct ", Symbol.unique s, " { int size; ", typeStr ty, " *elmts;};\n"]
 
- fun defProc p as {blocks,procs,...} s =
+ fun decVar (p:program as {vars,...}) s = 
+  case SymTable.look(vars, s) of ty => 
+   app print [typeStr ty, " ", (Symbol.unique s), ";\n"]
+
+
+ fun defProc (p:program as {blocks,procs,...}) s =
   case (SymTable.look(blocks,s), SymTable.look(procs,s)) of (b,{res,args}) =>
-   ( app print [Symbol.unique res, " ", Symbol.unique s, " ("]
+   ( app print [typeStr res, " ", Symbol.unique s, " ("]
    ; appFmt (fn (ty,name) => app print [(typeStr ty), " ", (Symbol.unique name)])
-      "," ")\n" (ListPair.map id (args (#args b)))
+      "," ")\n" (ListPair.map id (args, (#args b)))
    ; print "{\n"
    ; app (decVar p) (exhaust (#args b) (#vars b))
-   ; app printTExps (#body b)
+   ; app printStmt (#body b)
    ; print "}\n"
    )
 
- fun decVar p as {vars,...} s = 
-  case SymTable.look(vars, s) of {typ,_} => 
-   app print [(typeStr typ), " ", (Symbol.unique s), ";\n"]
-
- fun printStmt stmt = 
-  case stmt 
-   of ASSIGN {var, texp} = case texp
-      of {STRING, _} => 
-          ( appAlt print printVar ["strdup(", var, ", "]
-          ; appAlt printTExp print [texp, ");\n"]
-          )
-       | {_,_} => appAlt print printTExp ["=", texp, ";\n"]
-    | IF {test, then', else'} = 
-       ( appAlt print printTExp ["if (", test, ") {\n"] 
-       ; appAlt printStmt print [then', "}\n else {\n", else', "}\n"]
-       )
-	| EXP te = appAlt printTExp print [te, ";\n"]
-	| RETURN te = appAlt print printTExp ["return ", te, ";\n"]
-	| LABEL s = app print [Symbol.unique s, ":\n"]
-	| GOTO s = app print ["goto ", Symbol.unique s, ";\n"]
-
- fun malloc ty exp =
+ and malloc ty exp =
    ( app print
-      ["(", typeStr typ, ")malloc(sizeof(struct ", typeStr typ, ") * ("]
-   ; (case exp of NONE => print "1" | (SOME x) => printTexp exp)
+      ["(", typeStr ty, ")malloc(sizeof(struct ", typeStr ty, ") * ("]
+   ; (case exp of NONE => print "1" | SOME x => printTExp x)
    ; print "))"
    )
 
- fun printTExp p te as {typ, e} = 
-  case e
-   of ARR size = malloc typ SOME size
-    | REC = malloc typ NONE
-    | CALL {func, args} = 
-       ( app print [Symbol.unique func, "("] 
-       ; appFmt printTExp ", " ")" args
-       ) 
-    | INT i = print (Int.toString i)
-    | STR str = app print ["\"", str, "\""]
-    | OP of {left, op, right} = case left 
-       of {STRING,_} => 
-           ( appAlt print printTExp ["(strcmp(", left, ", ", right, ")"] 
-           ; app print [opname op, "0?1:0)"]
-           ) 
-        | {_,_} => appAlt print (printTExp p) ["(", left, opname op, right,")"]
-    | VAR v = printVar v
-    | NULL = print "NULL"
- 
- 
- fun printVar v = case v
+ and printVar v = case v
     of SIMPLE s => print (Symbol.unique s)
      | FIELD (v',s) => (printVar v'; print "."; print (Symbol.unique s))
      | INDEX (v',e) => (printVar v'; print ".elts["; printTExp e; print "]")
 
- fun print p as {main, procs, arrays, records,...} = 
+ and printStmt stmt = 
+  case stmt 
+   of ASSIGN {var, exp} =>
+     (case exp
+       of {ty=Type.STRING,...} => 
+           ( print "strdup(";  printVar var; print ", "
+           ; printTExp exp; print ");\n"
+           )
+        | _ => (print "="; printTExp exp; print ";\n")
+     )
+    | IF {test, then', else'} =>
+       ( print "if ("; printTExp test; print ") {\n"
+       ; app printStmt then'; print "}\n else {\n"; app printStmt else'; print "}\n"
+       )
+	| EXP te => (printTExp te; print ";\n")
+	| RETURN te => (print "return "; printTExp te; print ";\n")
+	| LABEL s => app print [Symbol.unique s, ":\n"]
+	| GOTO s => app print ["goto ", Symbol.unique s, ";\n"]
+
+ and printTExp (te as {e, ty}) = 
+  case e
+   of ARR size => malloc ty (SOME size)
+    | REC => malloc ty NONE
+    | CALL {func, args} =>
+       ( app print [Symbol.unique func, "("] 
+       ; appFmt printTExp ", " ")" args
+       ) 
+    | INT i => print (Int.toString i)
+    | STR str => app print ["\"", str, "\""]
+    | OP {left, oper, right} => 
+       ( case left
+          of {ty=Type.STRING,e} => 
+              ( print "(strcmp("; printTExp left; print ", "; printTExp right; print ")"
+              ; app print [opname oper, "0?1:0)"]
+              ) 
+           | _ => (print "("; printTExp left; print (opname oper); printTExp right; print ")")
+       )
+    | VAR v => printVar v
+    | NULL => print "NULL"
+
+ fun printProg (p as {main, procs, arrays, records,...}) = 
    ( print "#include <stdio.h>\n#include <stdlib.h>\n"
    ; printStdLib
-   ; SymTable.app (decRec p) (#records p)
-   ; SymTable.app (decArr p) (#arrays p)
-   ; SymTable.app (decProc p) (#procs p)
-   ; SymTable.app (defRec p) (#records p)
-   ; SymTable.app (defArr p) (#arrays p)
-   ; SymTable.app (defProc p) (#procs p)
-   ; app print ["int main () {\n", (Symbol.unique (#main p))]
+   ; SymTable.appi ((decRec p) o #1) records
+   ; SymTable.appi ((decArr p) o #1) arrays
+   ; SymTable.appi ((decProc p) o #1) procs
+   ; SymTable.appi ((defRec p) o #1) records
+   ; SymTable.appi ((defArr p) o #1) arrays
+   ; SymTable.appi ((defProc p) o #1) procs
+   ; app print ["int main () {\n", Symbol.unique main]
    ; print "()}\n"
    ) 
 
