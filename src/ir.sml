@@ -27,7 +27,7 @@ structure IR = struct
   = ARR of {size:texp, init:texp} (* ADDED arr:sym *)
   | ASSIGN of {var:var, exp:texp}
   | BREAK
-  | CALL of {func:sym, args:texp list}
+  | CALL of {func:sym, args:texp list ref}
   | IF of {test:texp, then':texp}
   | IFELSE of {test:texp, then':texp, else':texp}
   | INT of int

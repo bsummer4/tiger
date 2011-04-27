@@ -82,6 +82,7 @@ structure SymTable = struct
  fun enter(t,k,a) = IntBinaryMap.insert(t,Symbol.num k,a)
  fun appi f t = IntBinaryMap.appi f t
  fun keys t = IntBinaryMap.foldli (fn (k,v,sofar) => k::sofar) [] t
+ fun find(t,k) = IntBinaryMap.find(t,Symbol.num k)
  fun look(t,k) =
   case IntBinaryMap.find(t,Symbol.num k)
    of NONE => raise Undefined k
