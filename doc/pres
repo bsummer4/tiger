@@ -1,0 +1,151 @@
+%%
+Tiger Compiler
+
+Aaron Mishtal
+Stephen Skeirik
+Benjamin Summers
+
+%%
+Introduction
+
+- What is tiger?
+	- Small, imperative language with
+	  simple, ALGOL-like syntax
+	- Educational language created for
+     teaching compiler design.
+- Why Tiger?
+	- Specification already finalized
+	- General purpose programming
+	  language
+	- Possibility for extension
+
+%%
+Tiger Overview
+
+- A well-formed Tiger program is
+  composed of a single expression.
+- There are four basic types:
+	- Primitive: `int' and `string'
+	- Compound: arrays and records
+- The standard library includes only 11
+  functions for I/O and string handling
+
+%%
+Tiger Overview (cont'd)
+
+- Unlike C, there are no statements:
+  everything is an expression
+	- Function bodies are a single
+	  expression.
+	- An expression sequence is an
+	  expression that evaluates to the
+	  last subexpression
+- But... not all expressions return a
+  value.
+	- including loops, procedures, empty
+	  sequences, etc...
+
+%%
+Tiger Overview (cont'd)
+
+- Let expressions bind names to types,
+  variables, and functions.
+- Lexically scoped.
+- Lets may be nested
+
+	let type iarr = array of int
+	    var a := iarr[5] of 3
+	    var a_1 := 0
+	in a_1 := a[1];
+	   print(a_1)
+	end
+
+%%
+Tiger Overview (cont'd)
+
+Free variables, sequences, and loops:
+
+	let var x := 0
+	    function inc_x (y:int) =
+	      x := (x+y)
+	in for i := 0 to 10 do
+	     (inc_x(i); printi(x); print(" "))
+	end
+
+	OUTPUT: 0 1 3 6 10 15 21 28 36 45 55
+
+%%
+The Problem
+
+- Unclear how many completion phases
+  needed; what are the immediate
+  representations?
+- Since some Tiger features do exist in
+  C, they must be transformed.
+	- Nested Functions
+	- Nested lexical scoping
+	- No distinction between expressions
+	  and statements
+
+%%
+The Problem (cont'd)
+
+- What should the IR(s) look like.
+- How many should we have?
+- IR designs depends on what the
+  passes need to do.
+	- What the passes need to do depends
+	  on how the representations work.
+- IR evolved through several design.
+
+%%
+Compiler Architecture
+
+- Lexer -> Token stream
+- Parser -> AST
+- Semantic Analysis -> IR
+- Lambda Lifting -> Modified IR
+- C-ification -> C Representation
+- Code generation -> C code
+
+%%
+Semantic Analysis
+
+- We need to resolve identifiers and
+  validate code
+- Everything is given a unique name
+	- Preserves lexical scoping
+- Let expressions coalesced into blocks
+	- A block is a function's activation record
+	- Collect all variable declaration
+- Blocks form the central unit of the IR
+
+%%
+Lambda Lifting
+
+- Since C does not have nested functions,
+  all functions must be made global
+- We replace free variables with pass-i
+  by-reference arguments
+- Function call sites must be updated
+  accordingly.
+
+%%
+C-ification
+
+- In C, a statement cannot occur inside
+  an expression, but Tiger makes no
+  distinction between expressions and
+  statements.
+- So, compiler must ensure C-style
+  statements are "distinct".
+
+%%
+Tools Used
+
+- SML/NJ -- debugging
+- Mlton -- compilation
+- mllex, mlyacc -- lexing and parsing
+- Make -- Build system
+- Vim -- Development
+- Git -- Code sharing, integration
