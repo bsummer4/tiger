@@ -9,6 +9,28 @@
 ## Project Plan
 - Group organization: Schedule, deadline, logs, etc.
 
+- Since we're a small groups will didn't really need a rigid group
+  organization.
+	- One simple goal: working compiler.
+	- No group hierarchy; democratic organization.
+	- We usually had regular meeting a couple of times a week
+	- More or less meetings depending on how much work needed to
+	  be done.
+		- Talked after class or sent emails/text messages.
+	- Most of the productive work was done as a group.
+- We tried to break up the project to work on separatly.
+	- This worked initially when we were working on simple stuff:
+	  lexer, parser, documents.
+	- Failed when we got to the meat of the compiler.
+	- Underestimated the need for group communcation.
+		- Expected people to be able to take a section of the
+		  compiler.
+		- Can't really design a good architecture without
+                  knowing all the issues involved.
+		- We found that coding/designing as a group worked
+		  much better.
+- No group logs. `git' commit history.
+
 ## Language Evolution
 - We don't need to write this. Just write {Not applicable}
 - Design of language
@@ -18,12 +40,80 @@
 - Compiler modules and interfaces.
 
 ## Development Environment
-- Tools
-- Build system
-- Integration environment
+- Talk about
+	- Tools
+	- Build system
+	- Integration environment
+
+- Tools were chosen from day one.
+- Mlton, sml/nj, make, git, mllex, mlyacc
+	- We used plan9 mk instead of regular make, but it's basically
+	  the same idea.
+	- mlton is a whole-program compiler. It runs slow, but produces
+	  great executables.
+	- sml/nj has a REPL and compiles fast.
+		- REPL stands for "read, eval, print, loop",
+		  Basically an interactive interpreter.
+
+- Usage of git
+	- Distributed workflow
+	- Every person has a public repository.
+	- Everyone pushes changes to their public repo and pulls from
+	  other peoples public repos.
+	- Never push changes to other peoples repos.
+	- No one needs to maintain a central repo: less "contention"
+	  (as in lock-contention)
+	- Code conflicts and merges are less of a problem.
+	- Seems to work well.
+
+- make/vi
+	- Whole-program compilation means you don't need to maintain
+	  dependencies between files: dead-simple build.
+	- Good file structure + terse language means things are easy
+	  to find.
+	- The ML type-system cuts back on the need for a debugger.
+	- command-line use of sml/nj handles debugging needs.
+
+- Usage of mlyacc and mllex
+	- Similar to the Unix lex and yacc.
+	- More emphasis on types
+	- Less popular means less nice tutorials.
+		- One tutorial/manual; good, but if you don't really
+		  understand something, you've got no other resources.
+
+- Usage of SML
+	- A very modular language
+	- Type system
+		- "Make invalid states unrepresentable"
+		- Maybe do a little overview.
+	- It's a great language for compilers
+		- Complicated, recursive structures are easy to work
+                  with.
+			- Functional style
+			- Algebraic data types
+			- Very expressive language
+			- parametric polymorphism!
+		- Compliers need lots of complicated, recursive data
+		  structures.
+		- Algebraic data types vs class hierarchies.
+			- Pattern-matching is wonderful for this stuff.
+			- ...
+	- ...
 
 ## Test Plan and Test Suites
-- Defines and executes tests
+- Running the tests
+	- Code to print out all representations
+	- Code in the makefile to run all the tests
+	- Each test outputs the representation after every phase.
+- Inputs
+	- A large set of valid tiny programs to test specific features.
+	- A set of invalid programs to test error-checking.
+	- A set of programs to test situations that are potentially
+	  problematic.
+		- Deep nesting
+		- Mutually Recursive functions/types
+		- etc.
+	- A set of realistic programs.
 
 ## Conclusions
 - Lessons learned
