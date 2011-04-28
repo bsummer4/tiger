@@ -11,9 +11,9 @@ in sequence.
 ## Tokens
 Tokens in Tiger are either identifiers, string or integer constants,
 keywords, or punctuation characters. Whitespace (spaces, tabs, newlines)
-may optionally separate tokens. An identifier in Tiger any sequence
+may optionally separate tokens. An identifier in Tiger is any sequence
 of letters, digits, or underscores that starts with a letter. Tiger
-identifiers are casesensitive. Integer constants are sequences of
+identifiers are case-sensitive. Integer constants are sequences of
 at least one digit (0-9). A comment is a possibly empty sequence of
 characters starting with /* and ending with */, and comments may nest. A
 string constant is a possibly empty sequence of characters enclosed by
@@ -56,7 +56,7 @@ A valid Tiger program is an expr,
 | 	-> if expr then expr
 | 	-> if expr then expr else expr
 | 	-> while expr do expr
-| 	-> for expr := expr to expr do expr
+| 	-> for id := expr to expr do expr
 | 	-> break
 | 	-> let declaration-list in expr-seqopt end
 |
@@ -79,8 +79,10 @@ A valid Tiger program is an expr,
 
 Expressions are evaluated either for the value that they return or
 for their side-effects. Most expressions, except for procedure calls,
-assignments, if-then, while, break, and possibly ifthen-else, and let
-expressions return a value.
+assignments, if-then, while, break, and possibly ifthen-else, and
+let expressions return a value.  Except for expression sequences and
+expressions using `&', and `|', the evaluation order of expressions
+is unspecified.
 
 ### Lvalues
 An lvalue is a storage location that can be assigned a value. This can be
@@ -100,18 +102,21 @@ and record objects are implicit pointers.
 An expression of the form `id ( expr-listopt )' is an application of the
 function bound to id to the parameters given by the (possibly empty)
 comma-separated list of expression parameters. The parameters are
-evaluated before being passed to the function.
+evaluated before being passed to the function. Note that, as usual,
+the evaluation order of the arguments is unspecified.
 
 ### Operators
 Tiger recognizes the following binary operators, listed from low to high
-precedence, :=, |, &, >=, <=, >, <, <>, =, -, +, /, *. Tiger also has a
-unary minus operator, -, which negates a following integer expression,
-and it has higher precedence than any binary operator. Arithmetic
-operators are left associative, while the other operators do not associate
-and must be explicitly grouped.  Parenthesis increase the precedence
-of whatever expression they enclose. The arithmetic operators, +, -
-, /, and *, must be applied to integers and return an integer. If an
-arithmetic operation causes overflow, the result is undefined.
+precedence, :=, |, &, (>=, <=, >, <, <>, =), (-, +), (/, *). The
+parentheses group operators with equivalent precedence. Tiger also has a
+unary minus operator, -, which negates a following integer expression. The
+unary has higher precedence than any binary operator. Arithmetic operators
+are left associative, while the other operators do not associate and must
+be explicitly grouped. Parenthesis increase the precedence of whatever
+expression they enclose. The arithmetic operators, +, - , /, and *,
+must be applied to integers and return an integer. If an arithmetic
+operation causes overflow or if a number is divided by zero, the result
+is undefined.
 
 The operators <, >, <=, and >= can be applied to either integers or
 strings, and return a nonzero integer if the comparison is true, and 0
@@ -129,10 +134,10 @@ used for truth values, with 0 being false and anything else being true.
 
 ### Assignment
 Assignment statements are of the form lvalue := expr. The expression
-on the right-hand size and then the resulting value is assigned to the
-lvalue. The expression must be one that returns a value that matches
-the type of the lvalue. Array and record assignment performs a shallow
-pointer copy.
+on the right-hand side is evaluated and then the resulting value is
+assigned to the lvalue. The expression must be one that returns a value
+that matches the type of the lvalue. Array and record assignment performs
+a shallow pointer copy.
 
 ### nil
 The expression nil is a value that can be assigned to a variable of
@@ -140,7 +145,7 @@ any record type. A nil-valued record variable is essentially an empty
 pointer and attempting to access the a field of such a variable is a
 runtime error.
 
-### Flow Control
+### Control Flow
 If-then-else expressions are of the form if expr then expr else expr. The
 first expression is evaluated first and must return an integer. If the
 value of the first expression is not zero, then the second expression is
@@ -179,9 +184,9 @@ A let expression allows declarations to be bound to a sequence of
 expressions. It has the form let declaration-list in expr-seqopt end. The
 declarations are evaluated first and are only in scope for the extent
 of the following expression sequence. The expression sequence is an
-optional list of semicolon-separated expression. The value of a let
+optional list of semicolon-separated expressions. The value of a let
 expression is that of the last expression in its expression list. If
-the expression list is empty, the let exression does not return a value.
+the expression list is empty, the let expression does not return a value.
 
 ## Declarations
 A declaration can either be a type declaration, a variable declaration, or
@@ -222,29 +227,24 @@ let expression's expression list.
 | 	function id ( type-fieldsopt ) : type-id = expr
 
 ### Types
-The only predefined types in Tiger are string and int. Type declarations
-allow the creation of type aliases, records, and arrays. The declaration
-type type-id = type is the general form of a type declaration and the
-the kind of type is declared depends on the form of type.
+The only predefined types in Tiger are `string' and `int'. Type
+declarations allow the creation of type aliases, records, and arrays.
+Record type expressions are of the form `{ type-fieldsopt }', and array
+type-expressions are of the form `array of type-id'. Aliases are just
+alternate names for another type, while record and array
+type-expressions define new types. Even two identical record or array
+type-expressions create distinct, incompatible types.
 
-If type is a type-id, then the type declaration creates an alias for
-that type identifier. If it is { type-fieldsopt } then the declaration
-will declare a record type with named and typed fields as described by
-the right-hand side. Otherwise, if it is array of type-id, then the type
-is an array of whatever type referred to by the right-hand side type-id.
-
-Type declarations create distinct types, that is, multiple record
-types with the same fields or multiple arrays of the same type are
-treated as different types. Types are in scope as soon as they are
-declared. Sequential type declarations may be mutually recursive, and
-the scope of a declaration in such a sequence starts with the first
-declaration in the sequence.
+Types are in scope as soon as they are declared. Sequential type
+declarations may be mutually recursive, and the scope of a declaration
+in such a sequence starts with the first declaration in the sequence.
 
 ## Variables
-A variable declaration declares a new variable and assigns it an initial
-value. If the type of the variable is not specified as it is in the second
-form of a variable declaration, the type of the variable is determined
-by expr. A variable is in scope immediately after it is declared.
+A variable declaration declares a new variable and assigns it an
+initial value. If the type of the variable is not specified as it is
+in the second form of a variable declaration, the type of the variable
+is determined by the initial value. A variable is in scope immediately
+after it is declared.
 
 ### Functions
 The first form of a function declaration declares a procedure, which
@@ -253,12 +253,8 @@ the expression body of a procedure must not evaluate to a value. The
 second form declares a function, which returns a value of type
 type-id. The expression body of a function must evaluate to a value of
 type type-id. Both functions and procedures can take any number of typed
-and named parameters, which are passed by value.
-
-A function is in scope as soon as it is declared. A sequence of function
-declarations may be mutually recursive, and in this case, the scope
-of a function declaration in the sequence extends to the beginning of
-the sequence.
+and named parameters, which are passed by value.  A continuous sequence
+of function declarations may be mutually recursive.
 
 ### Standard Library
 Tiger includes a small standard library to handle some very basic input
