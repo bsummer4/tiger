@@ -1,4 +1,16 @@
 # Tiger Language Tutorial
+## Introduction
+Some have claimed that Tiger is only useful as an educational language
+in compiler design. This is simply not true. Tiger also has a cornucopia
+of other uses such as:
+
+	.1. Writing test cases for your students' compilers.
+
+This document is designed to teach basic Tiger programming. Here is the
+traditional first program:
+
+	| print("Hello world!\n")
+
 ## Program Structure
 ### Expressions
 A valid Tiger program is a syntactic construct known as an expression. An
