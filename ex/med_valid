@@ -1,4 +1,8 @@
-let function f(x:int):int = 2*x function g(y:int):int = y * f(y) in g(10) end
+"Mutual Recursion"
+let function f(x:int):int = 2*x function f(y:int):int = y*f(y) in g(10) end
+let function f(x:int):int = 2*x function g(y:int):int = y*f(y) in g(10) end
+"Nasty loops"
 let var x:=0 in while ( (while( (while (x < 10) do x:=2*x; x) < 5) do x:=x+1; x)<12 ) do x:=x+1 end
+"Nested Functions"
 let function f():string = let var s:="ab" function g():string = s in g() end in f() end
 

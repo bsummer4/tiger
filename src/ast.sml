@@ -61,8 +61,8 @@ structure ASTSexp = struct
 
   and exp (VAR v) = sexp "var" [var v]
     | exp NIL = S.SYM "nil"
-    | exp (INT i) = sexp "int" [S.INT i]
-    | exp (STR(s,_)) = sexp "string" [S.STR s]
+    | exp (INT i) = sexp (name (Symbol.mk "int")) [S.INT i]
+    | exp (STR(s,_)) = sexp (name (Symbol.mk "string")) [S.STR s]
     | exp (CALL{func,args,pos}) =
        sexp "call" (fix func::map exp args)
     | exp (OP{left,oper,right,pos}) =
@@ -77,7 +77,7 @@ structure ASTSexp = struct
     | exp (IF{test,then',else',pos}) =
        (case else' of NONE => sexp "if" [exp test, exp then']
                     | (SOME e) => sexp "if" [exp test, exp then', exp e])
-    | exp (WHILE{test,body,pos}) = sexp "while" [exp body]
+    | exp (WHILE{test,body,pos}) = sexp "while" [exp test, exp body]
     | exp (FOR{var=v,lo,hi,body,pos}) =
        sexp "for" [fix v, exp lo, exp hi, exp body]
     | exp (BREAK p) = S.SEQ [S.SYM "break"]
