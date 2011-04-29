@@ -1,0 +1,40 @@
+/* Expressions */ 0
+"string"
+10
+a
+-10
+10+5
+1-15
+4*20
+4 * 20
+16/4
+1=1
+10<>52
+2<1
+6>3
+1&2
+1|5
+"str"="str"
+"hh"<>"HH"
+"b"<"c"
+"1234">"12345"
+let var a:=10 in a end
+printi(10)
+print("str")
+flush()
+getchar()
+ord("ABCD")
+char(80)
+size("2 ")
+substring("twelve chars", 0, 6)
+not(1)
+exit(0)
+(1234; "sjr3"; -1; 1&0)
+let var a := 0 in if 1 then a:=5; a end
+if 1 then 2 else 3
+let var b := 0 in for i:=0 to 10 do b:=1; b end
+while 1 do break
+let var x:= "str" in x end
+let type ia = array of int in x:=ia[10] of 2 end
+let type weight = {lbs:int, oz:int} in dog:=weight{lbs=40, oz=12} end
+let function id(x:int) = x in id(5) end

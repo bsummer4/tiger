@@ -113,22 +113,13 @@ or, alternatively,
 |  var a := 5
 | in end
 
-However, variables don't have to be defined first to be used.  To assign
-a value to a variable without first declaring it we use an assignment
-expression, which resembles a variable declaration without the `var`
-keyword.
-
-| ( str := "Hello World!";
-|   a := 5 )
-
-Note that since an assignment is an expression, it does not need to appear
-in a let expression.  Also, since we used more than one expression, we
-must use an expression list.  In an assignment statement, the right-hand
-side must be an expression that returns a value.  The left-hand side
-variable will then assume the type of that value.  The assignment
-expression as a whole does not return a value.  An assignment expression
-does not allow the type of the variable to be specified as is possible
-in a variable declaration.
+:TODO: rewrite
+	Note that since an assignment is an expression, it does not
+	need to appear in a let expression.  Also, since we used more
+	than one expression, we must use an expression list.  In an
+	assignment statement, the right-hand side must be an expression
+	that returns a value. The assignment expression as a whole does
+	not return a value.
 
 ### Integers and Integer Operations
 An integer in Tiger is any nonempty sequence of the digits 0-9.

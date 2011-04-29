@@ -11,3 +11,12 @@
 
 	The ml-yacc `.cm' file is included in `src/tiger.cm', but it seems to be
 	unavailable from outside.
+
+:TODO: Some Tiger Issues
+	- Nil cannot be used with arrays
+	- Funky tiger strings need to be handled in the parser.
+	- Nil can only be used in a context where it's record type can
+	  be determined.
+
+:TODO: Write a makefile rule to run the each-file-on-a-line tests
+	cat ex/small_valid | (i=0; while read x; do echo "%% $x"; echo $x | ./o.parse; done) | less
