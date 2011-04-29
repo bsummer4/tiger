@@ -1,6 +1,6 @@
 (*
-	This defines the program representation for programs used inside
-	the compiler.
+    This defines the program representation for programs used inside
+    the compiler.
 *)
 
 structure C = struct
@@ -88,18 +88,18 @@ structure CPrint (*:> C_PRINT *) = struct
 
  fun opname oper = case oper
     of ADD => "+"  | SUB => "-" | MUL => "*" | DIV => "/" | EQ => "=="
-	 | NEQ => "!=" | LT => "<"  | LE => "<=" | GT => ">"  | GE => ">="
-	 | AND => "&&" | OR => "||" 
+     | NEQ => "!=" | LT => "<"  | LE => "<=" | GT => ">"  | GE => ">="
+     | AND => "&&" | OR => "||" 
 
  fun typeStr ty =
   let open Type in
    case ty 
     of Type.VOID_PTR => "void *"
      | Type.INT => "int"
-	 | Type.STR => "char *"
-	 | Type.VOID => "void"
-	 | Type.REC s => Symbol.unique s
-	 | Type.ARR s => Symbol.unique s
+     | Type.STR => "char *"
+     | Type.VOID => "void"
+     | Type.REC s => Symbol.unique s
+     | Type.ARR s => Symbol.unique s
   end
 
  fun unique' s = Symbol.unique (Symbol.mk s)
@@ -251,10 +251,10 @@ structure CPrint (*:> C_PRINT *) = struct
        ( print "if ("; printTExp test; print ") {\n"
        ; app printStmt then'; print "}\n else {\n"; app printStmt else'; print "}\n"
        )
-	| EXP te => (printTExp te; print ";\n")
-	| RETURN te => (print "return "; printTExp te; print ";\n")
-	| LABEL s => app print [Symbol.unique s, ":\n"]
-	| GOTO s => app print ["goto ", Symbol.unique s, ";\n"]
+    | EXP te => (printTExp te; print ";\n")
+    | RETURN te => (print "return "; printTExp te; print ";\n")
+    | LABEL s => app print [Symbol.unique s, ":\n"]
+    | GOTO s => app print ["goto ", Symbol.unique s, ";\n"]
 
  and printTExp (te as {e, ty}) = 
   case e
