@@ -1,0 +1,15 @@
+"str
+123_12
+break
+nil
+(18, "string")
+let in end
+a:=while 1 do 165
+b:=for i:=1 to 20 do 15
+c:=if (1<234) then 11
+(a:=1)+1
+f(2324)
+1<"1"
+a[12]:=12
+b.c:=53
+
