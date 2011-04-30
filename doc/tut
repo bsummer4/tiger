@@ -1,198 +1,249 @@
-# Tiger Language Tutorial
-## Introduction
+## Tiger Language Tutorial
+### Introduction
 Some have claimed that Tiger is only useful as an educational language
-in compiler design. This is simply not true. Tiger also has a cornucopia
+for compiler design. This is simply not true. Tiger also has a cornucopia
 of other uses such as:
 
 	.1. Writing test cases for your students' compilers.
+	.2. Hours of Saturday afternoon fun!
 
-This document is designed to teach basic Tiger programming. Here is the
-traditional first program:
+This document assumes some previous programming experience. In particular,
+the reader must be familiar with basic terminology such as program,
+variable, function, operator, etc... If you are not familiar with these
+terms, any basic programming book/course should provide the necessary
+background.
 
-	| print("Hello world!\n")
+But enough pleasantries. Let's roll our sleeves up and get straight to the
+coding (after all, that's what we're here for, right?).
 
-## Program Structure
-### Expressions
-A valid Tiger program is a syntactic construct known as an expression. An
-expression can be:
+#### Your First Tiger Program
 
-- A string or an integer constant
-- A function call
-- A storage location, such as a variable, array element, or a
-  record field
-- An assignment of a value to a storage location
-- A control structure, such as a loop or if-then statement
-- An array or record literal
-- One of the keywords 'nil' or 'break'
-- A sequence of expressions joined with operators
-- A list of expressions separated by semicolons and surrounded by
-  parenthesis
-- A let expression
+        | /* this is a comment about our first program! */
+	| print("Hello world!\n") 
 
-Expressions can be evaluated, but not all return a value.  Some
-expressions are only evaluated for their side-effects.  Notice that for
-some of these expressions, we must first have a variable or function
-defined.  However, there are no expressions that directly allow you to
-define anything.  In Tiger, definitions are given through declarations.
+Wow, that was easy. Too easy, perhaps? Actually, I didn't lie. This, just
+this, is a complete Tiger program. In Tiger, we don't need any classes,
+structures, or auxiliary setup information. We can just write code and
+run it. This program invokes the aptly named 'print' function which takes
+a single string argument and prints it to the command line. When you
+compile and run this program, it will print
 
-### Declarations
-Declarations allow you to define functions, variables, and new types.
-Declarations are joined with expressions through the use of let
-expressions.
+	| Hello World
 
-### Let Expressions
-A let expression looks like:
+on the command line. Note the comment afterwards. Tiger ignores all
+comments; these are simply for your benefit, so you can write things to
+remember them later. Of course, programs this simple are not truly 
+representative of Tiger's ability. To show you that, we will need to cover 
+a bit more ground first.
+
+### Program Structure
+#### Expressions
+Unlike other languages, each Tiger program is composed of a *single*
+expression. That's right, a single expression! Why? Well, aside from
+greatly simplifying the syntax and making parsing easy, it allows the
+programmer to organize code however he or she sees fit. There are no
+artificial limitations imposed as in other languages.
+
+If we consider our first example program, we can see that this Tiger 
+program is composed of a single function call expression that contains
+a single string expression as its argument. However, these are only
+two of the many expressions that Tiger offers. Here I present a brief
+overview of the various expressions Tiger can offer you, with examples:
+
+- strings - "BVZ", "Compilers", "CS461"
+- numbers - 102, 3061, 789, 0
+- variables and assignment - var id := 0, var type := "Honda"
+- function calls - print(), not(), exit()
+- mathematical expressions - 3 + 5 * 9 / 7
+- if expressions - if 1 then print("True!") else print("False!")
+- loop expressions - for i := 1 to 10 do printi(i)
+- expression lists - (x := 3 + 5; printi(x))
+- let expressions - let var print_me := "print me" in print(print_me)
+
+Before we can continue, we need to talk about what value an expression
+'returns'. When we say return, we mean the expression saves a value
+that can be stored in a variable or input to a function. Strings and
+integers are part of a special class of expressions called literals.
+These expressions return themselves, literally! Contrast that with
+variables, a class of expressions that returns whatever value we have
+stored inside them. When we assign a literal to a variable, that
+variable will return that same literal whenever it is evaluated.
+
+Functions, as you may have guessed, return whatever we define them to 
+return. Since we can define them however we want, they can return any 
+value.
+
+Mathematical expressions work exactly like you would expect. They take
+their arguments (which can be any other form of expression) and perform
+the requested operation according to the standard order of operations.
+
+If expressions are bit strange in that they sometimes return a value,
+but at other times do not. We won't go into all the details here, since
+we can actually retain full functionality without this detail. If you'd
+like to know, please consult the reference manual.
+
+Loop expressions are fairly straightforward. They loop over the
+segment of code in the loop body as many times as the programmer
+requests. Loops cannot return a value in Tiger, so if you'd like to
+remember that you did something in a loop, you had better save it in
+a variable!
+
+Most of these cases should be quite familiar, even to the novice 
+programmer. However, the two cases stand out from the rest and
+warrant additional explanation. They are expression lists and let
+expressions. Unfortunately, we can't skip them, because they are
+crucial to writing programs of any real complexity. 
+
+#### Expression Lists
+Here I give a simple example of an expression list, composed of
+expressions we have already seen above, and an if statement 
+(assume that x has already been declared elsewhere):
+
+| (if x then (print("X is now false!"); x := 0)
+|  else (print("X is now true!"); x := 1); x)
+
+Here, we are testing the value of x. In Tiger, a value of 0 is
+considered false. Every other value is considered true. In this
+case, x is true, so we print "X is now false!" and assign x to 0. 
+However, supposing x were equal to 0 at first, we would print 
+"X is now true!" and assign x to 1.
+
+If it isn't clear by now, an expression list simply runs each
+expression in order. In this case, the outer expression list contains
+an if expression followed by a variable expression. The two inner
+expression lists contain a function call followed by an assignment
+expression. 
+
+But what does an expression list return? It actually just returns
+the value of the last expression in the list. In this case, the final
+expression is the variable expression x, which returns the value either
+0 or 1.
+
+#### Let Expressions
+We talked about let expressions above, but we never really defined them.
+Here, I will give an example.
 
 | let
-|  declaration1
-|  declaration2
-|  ...
-|  declarationM
+|  var foo := "foo"
+|  var bar := "bar"
 | in
-|  expression1;
-|  expression2;
-|  ...
-|  expressionN;
+|  print(foo); print(bar); foo
 | end
 
-The declaration and expression lists are both optional and can be empty.
-Any declarations mad in the declaration list are only in scope for
-the extent of the let expression.  The return value, if any, of a let
-expression is the value of the last expression in its expression list.
+Let expressions are unique in that they let the programmer declare
+variables. What that means is that the programmer assigns a name to a
+variable so that the computer will remember when it is saved. In this
+case, the string literals "foo" and "bar" are being saved to two
+variables aptly named foo and bar.
 
-### Expression Lists
-An Expression list is a sequence of expressions separated by semicolons
-and surrounded by parenthesis.
+But now that these strings have names, where can we use them? All
+names defined in a let expression are valid in the let expression body,
+that is, the part in between the keywords 'in' and 'end'. In this case,
+the let body contains an expression sequence with two function calls,
+one to print the variable foo, the other bar. The final output of this
+let expression will be:
 
-| ( expression1 ;
-|   expression2 ;
-|   ... ;
-|   expressionN )
+| foobar
 
-The return value of an expression list is that of the final expression.
-If the final expressions does not return a value, then neither does the
-expression list.
+and it's return value is: "foo". Why? Because a let expression, much
+like an expression list, returns the value of the last expression in
+its body.
 
-### Comments
-Any sequence of characters or words beginning with `/*' and ending with
-`*/' is a comment and has no effect on the execution of the program.
-Comments may appear within other comments.
+Lets are extremely powerful. Since they are an expression, we can use
+them wherever expressions are normally used. This means we can define
+names for a very specific area of the program, helping us (and Tiger)
+to avoid name confusion.
 
-### Exiting a Program
+But what happens when a nested let defines a variable with the same
+name as its parent? In that case, we say the nested let variable
+"shadows" the parent's variable with the same name. Wherever the
+variable is used in the nested let's body, it assumes the value defined
+in the nested let, not the parent let.
+
+All of this may seem confusing now, but don't worry. You'll understand
+if you keep practicing it.
+
+#### Exiting a Program
 The Tiger standard library provides a procedure for exiting a program
-with a certain exit code.  This procedure is
+with a certain exit code. What exactly an exit code is doesn't matter
+for now. The important part is that it lets you exit the program. The
+exit function can be called as follows:
 
-| function exit (i:int)
+| exit(0)
 
-and be called with the expression `exit(exit-code)'.  This procedure
-can be called at any time and the program will immediately quit.
+The number just tells the computer how the program exited. Usually,
+exiting with 0 means the program ran successfully, and exiting with
+anything else means something went wrong.
 
-## Basic Types and Variables
-### Declaring and Using Variables
-The Tiger language only has two built-in types: strings and integers.
-The syntax for declaring a variable `id` of type `ty` and initial value
-equal to some `expr` is
+#### Integers and Integer Operations
+We've already mentioned integers before, but it's worth taking a second
+look to see how they really work. Integers can be defined simply as a
+group of numbers like 123 or 379. They can be as long or as short as
+you want (but note, the computer can only store numbers so long,
+otherwise, there will be problems. Do not worry though, the numbers
+must be VERY large for that to be a problem).
 
-| var id : ty := expr
-
-Note that since this is a declaration, it must occur in a let expression.
-The type specification after the variable name is optional.  If absent,
-the variable assumes the type of the expression on the right-hand side.
-For example, to declare a string variable `str` equal to `"Hello World!"`
-and an integer variable `a` equal to `5`, we would write:
-
-| let
-|  var str : string := "Hello World!"
-|  var a : int := 5
-| in end
-
-or, alternatively,
-
-| let
-|  var str := "Hello World!"
-|  var a := 5
-| in end
-
-:TODO: rewrite
-	Note that since an assignment is an expression, it does not
-	need to appear in a let expression.  Also, since we used more
-	than one expression, we must use an expression list.  In an
-	assignment statement, the right-hand side must be an expression
-	that returns a value. The assignment expression as a whole does
-	not return a value.
-
-### Integers and Integer Operations
-An integer in Tiger is any nonempty sequence of the digits 0-9.
 Tiger has the usual mathematical operators available for use with integer
 constants and variables, that is `*' performs multiplication, `/' performs
 integer division, `+' performs additions, and `-' performs subtraction.
-These operators are left-associative and have the typical relative levels
-of precedence (`+' and `-' have lower precedence than `*' and `/').
+These operators are left-associative and have levels of precedence defined
+above (`+' and `-' have lower precedence than `*' and `/').
 Additionally, the `-' symbol can also serve as the unary minus operator,
 which negates the integer value that it precedes.  Unary minus has higher
-precedence than the other arithmetic operators.  Parenthesis can be used
+precedence than the other arithmetic operators. Parentheses can be used
 to override the usual rules of precedence.  The expression
 
 | let
-|  var a := 5
+|  var a := 4
 |  var b := (a + a) * -a / 2 - 1
-| in end
+| in 
+|  b
+| end
 
-assigns the value of `-35' to the variable `b'.
+assigns the value of `-24' to the variable `b', and then the let
+expression returns that same value.
 
-### Strings and String Operations
-A string in Tiger is any sequence of characters enclosed by double quotes
+#### Strings and String Operations
+We've already seen strings before too, but again, because we want to be
+specific, we will briefly touch on them again.
+
+A string in Tiger is any group of characters enclosed by double quotes
 (`""').  Strings can contain special escape sequences, characters preceded
-by backslash (`\'), that serve as placeholder for special characters.
-The escape sequences that can appear in a Tiger strings are
+by backslash (`\'). These sequences let us insert invisible characters
+into our strings that we could not normally see otherwse, such as:
 
 | \n    -- Newline
 | \t    -- Tab
-| \"    -- Double quote
-| \\    -- Backslash
-| \ddd  -- Character with three digit
-|          ASCII code ddd
-| \...\ -- Any sequence of whitespace
-|          characters appearing between
-|          backslashes will be ignored.
 
-The Tiger standard library includes a set of functions for performing
-basic operations on strings.  They are
 
-| function ord(s : string) : int
+The following example demonstrates how we can use strings in Tiger, using
+a few functions defined for strings in the Tiger standard library (that
+just means we can use these functions anywhere and they are already 
+defined for us; we don't have to define them).
 
-	Returns the ASCII value of the first character in `s', or -1 if
-	`s' is empty.
+| let
+|  var str1 := ""
+|  var str2 := ""
+|  var len  := 0
+| in
+|  str1 := concat("Hello", " World!");
+|  str2 := substring(str1,0,5);
+|  len := size(str2)
+| end
 
-| function chr(i : int) : string
+The concat function is a special function that ties two strings together,
+back to front. In this case, the value "Hello World!" is assigned to str1.
 
-	Returns a string consisting only of the character with ASCII
-	value i.  If i is out of range, the program will exit.
+The substring function takes a string and two integers. These integers are
+indices into the string. In this case, all characters from the str1 starting
+at index 0 and going until index 5 exclusive are pulled from str1 and assigned
+to str2. Thus, the value "Hello" is assigned to str2.
 
-| function substring(s:string,f:int,n:int) : string
+Lastly, we have the function len, which takes a single string argument and
+returns the amount of characters in it. In this case, the number 5 is assigned
+to len.
 
-	Returns the substring of `s' starting at the `f'th character
-	and is `n' characters long.  The first character of a string is
-	numbered zero.
-
-| function concat(s1:string, s2:string) : string
-
-	Returns a string consisting of `s1' immediately followed by `s2'.
-
-The following example demonstrates the use of these functions to
-manipulate strings.
-
-| ( str1 := concat("Hello", " World!");
-|   str2 := substring(str1,0,5);
-|   len := size(str3);
-|   x := ord(str1);
-|   letter := chr(x) )
-
-After execution, `str1' will be "Hello World!", `str2' will be "Hello",
-`len' will be equal to 12, `x' will be equal to 72, and `letter' will be
-"H".
-
-# Relational Operators
+## Relational Operators
 Tiger includes a set of operations for performing comparisons, and these
 operators are overloaded to work with both strings and integers. The
 comparison operators and the comparison that they perform are
@@ -205,34 +256,41 @@ comparison operators and the comparison that they perform are
 - `<>' -- Not equal to
 
 Strings are compared using the standard ASCII lexicographical order and
-are equal if they contain the exact same characters in the same order. A
-relational expression returns an integer value. In Tiger, zero is false
-and any other integer is considered true. The equality operators, `=' and
-`<>', also work with array and record variables, and perform a pointer
-comparison. That is, two array or record variables are equal if they
-reference the same object. As an example, the expression
+are equal if they contain the exact same characters in the same order.
+Integers are compared using the rules of mathematics we've come to know
+and love. 
+
+A relational expression returns always returns an integer value: 
+0 for false and 1 for true. 
+
+The equality operators, `=' and `<>', also work with array 
+and record variables, and perform a pointer comparison. That is, two 
+array or record variables are equal if they reference the same object. 
+
+Here is a simple example:
 
 | 1 < 5
 
-evaluates to a nonzero integer, which is true. However, the expression
+which evalutes to `1', because it is true. However, the expression
 
-| One = Five
+| One < Five
 
-evaluates to `0' and is false.  Relational operators have lower precedence
+evaluates to `0' and is false, because the letter O comes after the
+letter F in the alphabet. Relational operators have lower precedence
 than any arithmetic operator and do not associate. Thus the statement
 
 | 1 < 5 < 2
 
-is not valid in Tiger. Associations must be explicitly given through
+does not make any sense. Associations must be explicitly given through
 the use of parenthesis for an expression involving multiple sequential
 comparisons. For example, the following expression is valid
 
 | (1 > 5) < 2
 
-and returns a nonzero integer. Beware of the fact that a true expression
-is only guaranteed to evaluate to a nonzero integer.
+and returns `1', because the inner comparison returns `1' which is
+less than 2, so the outer comparison also returns `1'.
 
-### Logical Operators
+#### Logical Operators
 In addition to relational arithmetic and relational operators, Tiger
 provides two lazy logical operators, `&' and `|', for `AND' and `OR',
 respectively. They take expressions that return integers as operands
@@ -247,15 +305,11 @@ following two expressions the right-hand side is never evaluated,
 Logical operators have lower precedence than either arithmetic or
 relational operators and `&' has higher precedence than `|'. The Tiger
 standard library also provides a function for logical negation. The
-function
+function not takes an integer expression and returns 1 if the expression 
+evaluates to false (0), and 0 otherwise.
 
-| function not(i : int) : int
-
-takes an integer expression and returns 1 if the expression evaluates
-to is false (0), and 0 otherwise.
-
-## Types, Arrays, and Records
-### Types
+### Types, Arrays, and Records
+#### Types
 Tiger gives the programmer the ability to redefine and create new types
 using the type keyword. A type declaration has the following syntax,
 
@@ -274,7 +328,7 @@ Integer wherever we would normally use int. Types can be redefined
 any number of times and user-defined types can be used anywhere a type
 is needed.
 
-### Arrays
+#### Arrays
 To declare an array, we must first use the above mentioned type
 declaration to create the array type that we need. An array type
 declaration looks like
@@ -295,9 +349,9 @@ are indexed beginning at zero. For example,
 | let
 |  type IntArray = array of int
 |  var array1 := IntArray[5] of 0
-|  var array2 : IntArray := IntArray[2] of 1
+|  var array2 := IntArray[2] of 1
+|  var array3 := IntArray[15] of 3
 | in
-|  array3 := IntArray[10] of 15;
 |  array3[4] := 0
 | end
 
@@ -305,7 +359,9 @@ shows the declaration of a type for an integer array, followed by
 multiple methods of creating an array variable of that type. Notice
 that the array type must be defined beforehand, and since defining a
 type is a declaration, it must appear in the declaration portion of a
-let expression.
+let expression. Actually, the Tiger language gives us alot of
+flexibility here, because the size of the array is not just a compile
+time constant, but can be defined at runtime.
 
 To create multidimensional arrays, we must declare multiple array
 types. The first will be a normal array, and the each subsequent array
@@ -314,8 +370,8 @@ type will be an array of the previous array type.
 | let
 |  type 1Darray = array of int
 |  type 2Darray = array of 1Darray
+|  var grid := 2Darray[5] of 1Darray[5] of 0;
 | in
-|  grid := 2Darray[5] of 1Darray[5] of 0;
 |  grid[0][0] := 1
 | end
 
@@ -323,7 +379,7 @@ The above code creates a 5x5 two-dimensional integer array with each
 entry initialized to zero and also shows the syntax for accessing a
 given element in a multidimensional array.
 
-### Records
+#### Records
 As with arrays, to create a record we must first declare a record
 type. Records can have zero or more typed fields and each must be given
 a label that is unique within that record. Record fields are accessed
@@ -338,24 +394,29 @@ code,
 |  type person = {name:string, age:int}
 |  var John : person := {name=”John”, age=36}
 |  var Mary := {name=”Mary”, age=40}
+|  var age_of_Joe := 0
 | in
 |  Joe := {name=”Joe”, age = 25};
 |  age_of_Joe := Joe.age
 | end
 
-### Array and Record Assignment and Comparison
+Note that when we assign a record value, we must specify all of the
+fields. Tiger will not assign default values to missing fields. Instead,
+an error will be thrown.
+
+#### Array and Record Assignment and Comparison
 Arrays and records are implicit pointers in Tiger. When assigning an array
 or record object to a new variable, the variable simply becomes an alias
 for that object and any changes made to that object will be reflected
 by that alias. Also, comparing two arrays or records performs a pointer
 comparison, and pointers are equal only if they reference the same object.
 
-### Nil
+#### Nil
 The keyword nil represents a value that can be assigned to and compared
 against a record variable. Accessing a field of a  nil-valued variable
 is a runtime error and will cause the program to exit.
 
-### Mutually Recursive Types
+#### Mutually Recursive Types
 Type declarations can be mutually recursive, that is, defined in terms
 of each other, as long as they are declared in an unbroken sequence.
 
@@ -372,12 +433,12 @@ type group, and then the next declaration declares group to be an array
 of type person. These two types are defined in terms of each other and
 are mutually recursive.
 
-## Control Flow
+### Control Flow
 Tiger includes the usual constructs for controlling program flow,
 including several loops and conditional execution statements. All flow
 control structures are expressions.
 
-### If-Then and If-Then-Else
+#### If-Then and If-Then-Else
 The syntax for an if-then statement is
 
 | if expression1 then expression2
@@ -416,7 +477,7 @@ the expression
 
 evaluates to 1.
 
-### For Loops
+#### For Loops
 The syntax for a for-loop is
 
 | for id := expression1 to expression2 do expression3
@@ -436,7 +497,7 @@ following example computes the sum of the integers 1 through 10.
 |  for i := 1 to 10 do sum := sum + i
 | end
 
-### While Loops
+#### While Loops
 The syntax for a while-loop is
 
 | while expression1 do expression2
@@ -453,13 +514,13 @@ the integers 1 through 10.
 |  while i <= 10 do (sum := sum+i; i := i+1)
 | end
 
-### Break
+#### Break
 To exit a loop early, Tiger provides the keyword break. When encountered,
 break will cause the program to exit the loop immediately enclosing
 the statement.
 
-## Functions and Procedures
-### Function and Procedure Declarations
+### Functions and Procedures
+#### Function and Procedure Declarations
 Tiger makes a slight distinction between functions, which return a value,
 and procedures, which are evaluated for their side-effects. A function
 declaration looks like
@@ -475,14 +536,20 @@ a return type.
 | function fname (param1:type1,..., paramN:typeN) = expression
 
 The expression that serves as the body of a procedure must not return a
-value. Functions and procedure declarations must appear in the declaration
+value. Remember that in Tiger parlance, expression does not have it's
+usual meaning that we see in most C like languages! Everything is an
+expression, and not all expressions return a value. Loops, for example,
+cannot return values, so the body of a procedure very well could be
+composed of a loop.
+
+Functions and procedure declarations must appear in the declaration
 list of a let expression, just like any other declaration. Any previous
 declarations made in the let expression can be accessed and modified in
 the function or procedure body. The distinction between functions and
 procedures is useful, but from now on we will refer to both functions
 and procedures by the term function.
 
-### Function Calls
+#### Function Calls
 To make a call to a function, we use the following syntax,
 
 | fname(expression1,...,expressionN)
@@ -504,14 +571,14 @@ in order. The following example shows how to declare and call a function.
 
 At the end of the above let expression, the variable z holds the value 2.
 
-### Passing Values to Functions
+#### Passing Values to Functions
 Parameters are passed to functions by value. Since the value of an array
 or record variable is technically a pointer, functions can make lasting
 changes arrays and records that are passed as parameters. However, note
 that functions can affect the value of any variable declarations that
 they have access to.
 
-### Function Scope and Mutual Recursion
+#### Function Scope and Mutual Recursion
 As with type declarations, function declarations may be mutually recursive
 if they appear in sequence. Any other type of declaration will end such a
 sequence. This has the effect that any function declaration is in scope
@@ -538,7 +605,7 @@ or even.
 |  is_even(5)
 | end
 
-## Input and Output
+### Input and Output
 The Tiger standard library provides very basic functions for input and
 output. They are:
 
@@ -559,46 +626,83 @@ output. They are:
 	Reads and returns a character from standard input as a
 	string. Returns an empty string at end-of-file.
 
+Note that Tiger print functions do not automatically include a newline
+at the end of whatever is printed. A user must include the escape
+sequence `\n' manually, wherever he or she would like to print one.
+
 The following example shows a simple Tiger program that takes an integer
-value n on standard input and outputs the sum from 1 to n.
+value n on standard input and outputs the sum from 1 to n. Note that
+this example uses functions defined in the standard library which we
+have described thus far. But by now, you should be able to read it
+and understand it! I will give some commentary here, but the full
+interpretation is left as an exercise for the reader.
 
 | let
+|
+|  /* raises x to power n */
 |  function pow(x:int,n:int) : int =
-|   ( result := 1;
+|   let
+|     var result := 1
+|   in  
 |     for i := 1 to n do
 |     result := result * x;
 |     result
-|   )
+|   end 
+|
+|  /* reverses string s */
 |  function rev(s:string) : string =
-|   ( new_str := “”;
+|   let
+|     var new_str := “”
+|     var n := 0 
+|   in
 |     n := size(s);
 |     for i := 1 to n do
 |      ( char := substr(s,n-i,1);
 |        new_str := concat(new_str,char)
 |      );
 |     new_str
-|   )
+|   end
+|
+|  /* returns the integer value of a
+|     character that represents an integer */
 |  function charToInt(s:string) : int =
 |   ord(s) - 48
-|  function stringToInt(s:string) : int =
-|   ( n := size(s);
-|     value := 0;
+|
+|  /* converts a string to an integer */
+|  function strToInt(s:string) : int =
+|   let
+|     var rev_str := “”
+|     var n := 0 
+|     var digit := 0
+|     var value := 0
+|   in
+|     n := size(s);
 |     rev_str := rev(s);
 |     for i := 0 to n-1 do
 |     ( digit := charToInt(substr(rev_str,i,1));
 |       value := value + digit * pow(10,i)
 |     );
 |     value
-|   )
+|   end
+|
+|  /* declare some variables */
+|  var str := ""
+|  var num := 0
+|  var sum := 0
+|
 | in
-|  str := "";
+|
+|  /* loop and grab input */
 |  while 1 do
 |   ( input := getchar();
 |     if input = ""
 |     then break
 |     else str := concat(str, input));
+|
+|  /* loop and add numbers */
 |  num := strToInt(str);
 |  sum := 0;
 |  for i := 1 to num do sum := sum +  i;
 |  printi(sum); print("\n")
+|
 | end

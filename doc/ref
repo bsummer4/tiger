@@ -106,21 +106,28 @@ evaluated before being passed to the function. Note that, as usual,
 the evaluation order of the arguments is unspecified.
 
 ### Operators
-Tiger recognizes the following binary operators, listed from low to high
-precedence, :=, |, &, (>=, <=, >, <, <>, =), (-, +), (/, *). The
-parentheses group operators with equivalent precedence. Tiger also has a
-unary minus operator, -, which negates a following integer expression. The
-unary has higher precedence than any binary operator. Arithmetic operators
-are left associative, while the other operators do not associate and must
-be explicitly grouped. Parenthesis increase the precedence of whatever
-expression they enclose. The arithmetic operators, +, - , /, and *,
-must be applied to integers and return an integer. If an arithmetic
-operation causes overflow or if a number is divided by zero, the result
-is undefined.
+Tiger recognizes the following binary operators, listed from lowest to 
+highest precedence:
+
+- :=
+- |
+- & 
+- >=, <=, >, <, <>, = 
+- -, + 
+- /, * 
+
+Tiger also has a unary minus operator, -, which negates a following
+integer expression. The unary has higher precedence than any binary
+operator. Arithmetic operators are left associative, while the other
+operators do not associate and must be explicitly grouped. Parenthesis
+increase the precedence of whatever expression they enclose. The
+arithmetic operators, +, - , /, and *, must be applied to integers and
+return an integer. If an arithmetic operation causes overflow or if a
+number is divided by zero, the result is undefined.
 
 The operators <, >, <=, and >= can be applied to either integers or
 strings, and return a nonzero integer if the comparison is true, and 0
-otherwise. Strings are compared based on standard ASCII lexicographic
+1 otherwise. Strings are compared based on standard ASCII lexicographic
 order.
 
 The operators = and <> test for equality and inequality, respectively,
