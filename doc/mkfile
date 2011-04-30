@@ -6,7 +6,7 @@
 # 	The formatting isn't polished at all, so don't bother installing
 # 	plan9port for this.
 
-src = tut wp ref
+src = tut wp ref report
 out = ${src:%=%.pdf}
 all:V: $out
 clean:V:
