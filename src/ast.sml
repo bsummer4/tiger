@@ -115,3 +115,11 @@ structure ASTSexp = struct
   val toSexp = exp
  end
 end
+
+structure ASTUtils = struct
+ fun varName v =
+  case v
+  of AST.SIMPLE (s,_) => s
+   | AST.FIELD (v,s,_) => varName v
+   | AST.INDEX (v,e,_) => varName v
+end
