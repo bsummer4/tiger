@@ -3,7 +3,7 @@
     the compiler.
 *)
 
-structure C = struct
+structure CIR = struct
  type sym = Symbol.symbol
 
  structure Type = struct
@@ -64,15 +64,15 @@ structure C = struct
   }
 end
 
-signature C_PRINT = sig
- val printProg : C.program -> unit
+signature CIR_PRINT = sig
+ val printProg : CIR.program -> unit
 end
 
 (*
 	If these are not true, an TODO exception will be thrown.
 *)
-structure CPrint (*:> C_PRINT *) = struct
- open C
+structure CIRPrint (*:> CIR_PRINT *) = struct
+ open CIR
  (* decArray decRec decProc ; defArray defRec defProc *)
 
  fun id x = x

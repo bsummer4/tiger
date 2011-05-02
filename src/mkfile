@@ -8,8 +8,8 @@ mlb =\
  @/mlyacc-lib/mlyacc-lib.mlb
 
 src =\
- util.sml sym.sml sexp.sml ast.sml ir.sml ll.sml sa.sml tigerdefs.sml\
- tiger.grm.sig tiger.grm.sml tiger.lex.sml
+ util.sml sym.sml sexp.sml ast.sml ir.sml cir.sml ll.sml sa.sml\
+ parseutils.sml tiger.grm.sig tiger.grm.sml tiger.lex.sml
 
 all:V:
 <../ml.mk
