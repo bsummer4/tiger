@@ -28,14 +28,9 @@ signature SYMBOL = sig
 end
 
 signature SYM_TABLE = sig
- eqtype symbol
- exception Undefined of symbol
- type 'a table
- val empty: 'a table
- val enter: 'a table * symbol * 'a -> 'a table
- val look: 'a table * symbol -> 'a
- val appi: (symbol * 'a -> unit) -> 'a table -> unit
- val keys: 'a table -> symbol list
+ structure Symbol: SYMBOL
+ include ORD_MAP
+ sharing type Key.ord_key = Symbol.symbol
 end
 
 structure Symbol = struct
@@ -74,21 +69,9 @@ structure Symbol = struct
  fun unique s = String.concat [name s, "_", Int.toString s]
 end
 
-structure SymTable = struct
- type symbol = Symbol.symbol
- exception Undefined of symbol
- type 'a table = 'a IntBinaryMap.map
- val empty = IntBinaryMap.empty
- fun enter(t,k,a) = IntBinaryMap.insert(t,Symbol.num k,a)
- fun appi f t = IntBinaryMap.appi f t
- fun keys t = IntBinaryMap.foldli (fn (k,v,sofar) => k::sofar) [] t
- fun find(t,k) = IntBinaryMap.find(t,Symbol.num k)
- fun look(t,k) =
-  case IntBinaryMap.find(t,Symbol.num k)
-   of NONE => raise Undefined k
-    | (SOME x) => x
+structure SymTable:> SYM_TABLE = struct
+ open IntBinaryMap
+ structure Symbol = Symbol
 end
 
-structure Symbol = Symbol (*:> SYMBOL*)
-signature SYM_TABLE' = SYM_TABLE where type symbol=Symbol.symbol
-structure SymTable = SymTable(*:> SYM_TABLE'*)
+structure Symbol = SymTable.Symbol

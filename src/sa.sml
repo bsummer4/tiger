@@ -35,11 +35,11 @@ structure Semantic = struct
 
   type sym = Symbol.symbol
   structure ST = SymTable
-  type sm = sym ST.table
+  type sm = sym ST.map
   exception TypeError
 
   structure State = struct
-   type scope = { ty:T.ty ST.table, var:sym ST.table }
+   type scope = { ty:T.ty ST.map, var:sym ST.map }
    type blockState = { name:sym, parent:sym option, vars:sym list
                      , subBlocks:sym list }
    type state = blockState * scope * I.program
@@ -56,10 +56,10 @@ structure Semantic = struct
   end
 
   (* Convenience Functions *)
-  fun bindType (b,{ty,var},p) name v = (b,{ty=ST.enter(ty,name,v),var=var},p)
-  fun bindVal (b,{ty,var},p) name v = (b,{ty=ty,var=ST.enter(var,name,v)},p)
-  fun getType (_,{ty,var},_) sym = ST.look(ty,sym)
-  fun getVar (_,{ty,var},_) sym = ST.look(var,sym)
+  fun bindType (b,{ty,var},p) name v = (b,{ty=ST.insert(ty,name,v),var=var},p)
+  fun bindVal (b,{ty,var},p) name v = (b,{ty=ty,var=ST.insert(var,name,v)},p)
+  fun getType (_,{ty,var},_) sym = ST.lookup(ty,sym)
+  fun getVar (_,{ty,var},_) sym = ST.lookup(var,sym)
   type s=State.state
 
   datatype operClass = INT_OP | CMP_OP | EQ_OP
@@ -73,7 +73,7 @@ structure Semantic = struct
   fun irop op' = case op'
    of A.ADD=>I.ADD | A.SUB=>I.SUB | A.MUL=>I.MUL | A.DIV=>I.DIV
     | A.AND=>I.AND | A.OR=>I.OR   | A.LT=>I.LT   | A.LE=>I.LE
-    | A.GT=>I.GT   | A.GE=>I.GE   | A.EQ=>I.EQ
+    | A.GT=>I.GT   | A.GE=>I.GE   | A.EQ=>I.EQ   | A.NEQ=>I.NEQ
 
   fun assertTy t t' = if T.compatible(t,t') then () else raise TypeError
   fun assertTy' [] t' = raise TypeError
@@ -96,14 +96,14 @@ structure Semantic = struct
 
     fun rec' {fields,typ,pos} =
      let val rty = case getType typ of T.REC r => r | _ => raise TypeError
-         val etys = ST.look (#arrays pgm,rty)
+         val etys = ST.lookup (#arrays pgm,rty)
      in TODO()
         (*case smap (fn ... => cvt ...) s fields of (s',fields') => TODO()*)
      end
 
     fun arr {typ,size,init,pos} =
      let val aty = case getType typ of T.ARR a => a | _ => raise TypeError
-         val ety = ST.look (#arrays pgm,aty)
+         val ety = ST.lookup (#arrays pgm,aty)
      in case smap cvt s [size,init]
          of (s',[s as{ty=tys,e=es}, i as{ty=tyi,e=ei}]) =>
              if tys<>T.INT orelse tyi<>ety then raise TypeError

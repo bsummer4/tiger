@@ -10,9 +10,9 @@ structure C = struct
   datatype ty
    = VOID_PTR | INT | STR | VOID | REC of sym | ARR of sym
 
-  type arrays = ty SymTable.table
-  type records = (sym * ty) list SymTable.table
-  type procs = {res:ty,args:ty list} SymTable.table
+  type arrays = ty SymTable.map
+  type records = (sym * ty) list SymTable.map
+  type procs = {res:ty,args:ty list} SymTable.map
 
   fun compatible (a,b) =
    if a=b then true else case (a,b)
@@ -52,8 +52,8 @@ structure C = struct
 	are disjoint sets and that the order of `args' is significant.
  *)
  type block = {args:sym list, vars:sym list, body:stmt list}
- type vars = Type.ty SymTable.table
- type blocks = block SymTable.table
+ type vars = Type.ty SymTable.map
+ type blocks = block SymTable.map
  type program =
   { main:sym
   , blocks:blocks
@@ -78,7 +78,7 @@ structure CPrint (*:> C_PRINT *) = struct
  fun id x = x
 
  fun exhaust [] [] = []
-   | exhaust x [] = [] 
+   | exhaust x [] = []
    | exhaust [] y = y
    | exhaust (x::xs) (y::ys) = exhaust xs ys
 
@@ -89,11 +89,11 @@ structure CPrint (*:> C_PRINT *) = struct
  fun opname oper = case oper
     of ADD => "+"  | SUB => "-" | MUL => "*" | DIV => "/" | EQ => "=="
      | NEQ => "!=" | LT => "<"  | LE => "<=" | GT => ">"  | GE => ">="
-     | AND => "&&" | OR => "||" 
+     | AND => "&&" | OR => "||"
 
  fun typeStr ty =
   let open Type in
-   case ty 
+   case ty
     of Type.VOID_PTR => "void *"
      | Type.INT => "int"
      | Type.STR => "char *"
@@ -104,11 +104,11 @@ structure CPrint (*:> C_PRINT *) = struct
 
  fun unique' s = Symbol.unique (Symbol.mk s)
 
- fun printStdLib() = app print 
+ fun printStdLib() = app print
   [(* print *)
-   "void ", unique' "print", "(char *str) {\n", 
+   "void ", unique' "print", "(char *str) {\n",
    "  printf(\"%s\", str);\n",
-   "}\n\n", 
+   "}\n\n",
    (* printi *)
    "void ", unique' "printi", "(int i) {\n",
    "  printf(\"%d\", i);\n",
@@ -125,7 +125,7 @@ structure CPrint (*:> C_PRINT *) = struct
    "    exit(1);\n",
    "  }\n",
    "  str[0] = getchar();\n",
-   "  str[1] = '\\0';\n", 
+   "  str[1] = '\\0';\n",
    "  return str;\n",
    "}\n\n",
    (* ord *)
@@ -170,7 +170,7 @@ structure CPrint (*:> C_PRINT *) = struct
    "  if (new_str == NULL) {\n",
    "    fprintf(stderr,\"no memory\");\n",
    "    exit(1);\n",
-   "  }\n", 
+   "  }\n",
    "  strcpy(new_str, str1);\n",
    "  strcat(new_str, str2);\n",
    "}\n\n",
@@ -178,11 +178,11 @@ structure CPrint (*:> C_PRINT *) = struct
    "int ", unique' "not", "(int i) {\n",
    "  return (i == 0 ? 1 : 0);\n",
    "}\n\n",
-   (* exit *)   
+   (* exit *)
    "void ", unique' "exit", "(int i) {\n",
    "  exit(i);\n",
    "}\n\n"
-  ] 
+  ]
 
  fun decStruct _ s =
   let val s = Symbol.unique s
@@ -191,31 +191,31 @@ structure CPrint (*:> C_PRINT *) = struct
 
  val (decArr,decRec) = (decStruct,decStruct)
 
- fun decProc (p:program as {procs,...}) s = 
-  case SymTable.look(procs,s) of {res,args} =>
+ fun decProc (p:program as {procs,...}) s =
+  case SymTable.lookup(procs,s) of {res,args} =>
    ( app print [typeStr res, " ", Symbol.unique s, "("]
    ; appFmt (print o typeStr) ", " ");\n" args
-   )  
+   )
 
- fun defRec (p:program as {records,...}) s = 
-   case SymTable.look(records,s) of rec' =>
+ fun defRec (p:program as {records,...}) s =
+   case SymTable.lookup(records,s) of rec' =>
    ( app print ["struct ", Symbol.unique s, " {"]
    ; appFmt (fn (name, ty) => app print [typeStr ty, " ", Symbol.unique name])
       "; " ";};\n" rec'
      (* ListPair.map id (#ty (#1 rec')) (#1 rec')) *)
    )
-   
+
  fun defArr (p:program as {arrays,...}) s =
-   case SymTable.look(arrays,s) of ty =>
+   case SymTable.lookup(arrays,s) of ty =>
     app print ["struct ", Symbol.unique s, " { int size; ", typeStr ty, " *elmts;};\n"]
 
- fun decVar (p:program as {vars,...}) s = 
-  case SymTable.look(vars, s) of ty => 
+ fun decVar (p:program as {vars,...}) s =
+  case SymTable.lookup(vars, s) of ty =>
    app print [typeStr ty, " ", (Symbol.unique s), ";\n"]
 
 
  fun defProc (p:program as {blocks,procs,...}) s =
-  case (SymTable.look(blocks,s), SymTable.look(procs,s)) of (b,{res,args}) =>
+  case (SymTable.lookup(blocks,s), SymTable.lookup(procs,s)) of (b,{res,args}) =>
    ( app print [typeStr res, " ", Symbol.unique s, " ("]
    ; appFmt (fn (ty,name) => app print [(typeStr ty), " ", (Symbol.unique name)])
       "," ")\n" (ListPair.map id (args, (#args b)))
@@ -237,11 +237,11 @@ structure CPrint (*:> C_PRINT *) = struct
      | FIELD (v',s) => (printVar v'; print "."; print (Symbol.unique s))
      | INDEX (v',e) => (printVar v'; print ".elts["; printTExp e; print "]")
 
- and printStmt stmt = 
-  case stmt 
+ and printStmt stmt =
+  case stmt
    of ASSIGN {var, exp} =>
      (case exp
-       of {ty=Type.STR,...} => 
+       of {ty=Type.STR,...} =>
            ( print "strdup(";  printVar var; print ", "
            ; printTExp exp; print ");\n"
            )
@@ -256,28 +256,28 @@ structure CPrint (*:> C_PRINT *) = struct
     | LABEL s => app print [Symbol.unique s, ":\n"]
     | GOTO s => app print ["goto ", Symbol.unique s, ";\n"]
 
- and printTExp (te as {e, ty}) = 
+ and printTExp (te as {e, ty}) =
   case e
    of ARR size => malloc ty (SOME size)
     | REC => malloc ty NONE
     | CALL {func, args} =>
-       ( app print [Symbol.unique func, "("] 
+       ( app print [Symbol.unique func, "("]
        ; appFmt printTExp ", " ")" args
-       ) 
+       )
     | INT i => print (Int.toString i)
     | STR str => app print ["\"", str, "\""]
-    | OP {left, oper, right} => 
+    | OP {left, oper, right} =>
        ( case left
-          of {ty=Type.STR,e} => 
+          of {ty=Type.STR,e} =>
               ( print "(strcmp("; printTExp left; print ", "; printTExp right; print ")"
               ; app print [opname oper, "0?1:0)"]
-              ) 
+              )
            | _ => (print "("; printTExp left; print (opname oper); printTExp right; print ")")
        )
     | VAR v => printVar v
     | NULL => print "NULL"
 
- fun printProg (p as {main, procs, arrays, records,...}) = 
+ fun printProg (p as {main, procs, arrays, records,...}) =
    ( print "#include <stdio.h>\n#include <stdlib.h>\n"
    ; printStdLib
    ; SymTable.appi ((decRec p) o #1) records
@@ -288,6 +288,6 @@ structure CPrint (*:> C_PRINT *) = struct
    ; SymTable.appi ((defProc p) o #1) procs
    ; app print ["int main () {\n", Symbol.unique main]
    ; print "()}\n"
-   ) 
+   )
 
 end

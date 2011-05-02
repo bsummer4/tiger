@@ -10,9 +10,9 @@ structure IR = struct
   datatype ty
    = NIL | INT | STR | UNIT | REC of sym | ARR of sym | FUN of sym
 
-  type arrays = ty SymTable.table
-  type records = (sym * ty) list SymTable.table
-  type procs = {res:ty,args:ty list} SymTable.table
+  type arrays = ty SymTable.map
+  type records = (sym * ty) list SymTable.map
+  type procs = {res:ty,args:ty list} SymTable.map
 
   fun compatible (a,b) =
    if a=b then true else case (a,b)
@@ -56,8 +56,8 @@ structure IR = struct
     , body:texp
     }
 
- type vars = {typ:Type.ty, block:sym, ref':bool} SymTable.table
- type blocks = block SymTable.table
+ type vars = {typ:Type.ty, block:sym, ref':bool} SymTable.map
+ type blocks = block SymTable.map
  type program =
   { main:sym
   , blocks:blocks
