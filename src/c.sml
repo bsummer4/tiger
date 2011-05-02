@@ -52,7 +52,7 @@ structure C = struct
 	are disjoint sets and that the order of `args' is significant.
  *)
  type block = {args:sym list, vars:sym list, body:stmt list}
- type vars = Type.ty SymTable.table
+ type vars = {ty:Type.ty,isRef:bool} SymTable.table
  type blocks = block SymTable.table
  type program =
   { main:sym
@@ -72,7 +72,10 @@ end
 	If these are not true, an TODO exception will be thrown.
 *)
 structure CPrint (*:> C_PRINT *) = struct
- open C
+ open Util C
+ structure ST = SymTable
+ structure Sym = Symbol
+
  (* decArray decRec decProc ; defArray defRec defProc *)
 
  fun id x = x
@@ -98,11 +101,11 @@ structure CPrint (*:> C_PRINT *) = struct
      | Type.INT => "int"
      | Type.STR => "char *"
      | Type.VOID => "void"
-     | Type.REC s => Symbol.unique s
-     | Type.ARR s => Symbol.unique s
+     | Type.REC s => Sym.unique s
+     | Type.ARR s => Sym.unique s
   end
 
- fun unique' s = Symbol.unique (Symbol.mk s)
+ fun unique' s = Sym.unique (Sym.mk s)
 
  fun printStdLib() = app print 
   [(* print *)
@@ -185,108 +188,140 @@ structure CPrint (*:> C_PRINT *) = struct
   ] 
 
  fun decStruct _ s =
-  let val s = Symbol.unique s
+  let val s = Sym.unique s
    in app print ["struct ", s, ";\ntypedef struct ", s, " *", s, ";\n"]
   end
 
  val (decArr,decRec) = (decStruct,decStruct)
 
- fun decProc (p:program as {procs,...}) s = 
-  case SymTable.look(procs,s) of {res,args} =>
-   ( app print [typeStr res, " ", Symbol.unique s, "("]
-   ; appFmt (print o typeStr) ", " ");\n" args
-   )  
+(*
+ ====
+ = For calls
+ =====
+ the argument expressions, the var to be created
+ is the argument that we are creating a reference? { return false; }
+  if the thing we are passing is not a simple variable, then complain.
+  otherwise grab the name of the simple variable
+ is it a reference?
+  if yes then return false
+  else return true
+
+ =====
+ = For declarations
+ =====
+ The variable to be created.
+*)
+
+ fun varDecPrint (p:program) var = 
+  case ST.look(#vars p,var) of {ty, isRef} =>
+   app print [typeStr ty, if isRef then "* " else " ", Sym.unique var]
+   
+ fun decProc (p:program as {procs,blocks,vars,...}) s =
+  let val ({args,...}, {res,...}) = (ST.look(blocks,s), ST.look(procs,s))
+  in app print [typeStr res, " ", Sym.unique s, "("]
+   ; appFmt (varDecPrint p) ", " ");\n" args
+  end
 
  fun defRec (p:program as {records,...}) s = 
-   case SymTable.look(records,s) of rec' =>
-   ( app print ["struct ", Symbol.unique s, " {"]
-   ; appFmt (fn (name, ty) => app print [typeStr ty, " ", Symbol.unique name])
+   case ST.look(records,s) of rec' =>
+   ( app print ["struct ", Sym.unique s, " {"]
+   ; appFmt (fn (name, ty) => app print [typeStr ty, " ", Sym.unique name])
       "; " ";};\n" rec'
      (* ListPair.map id (#ty (#1 rec')) (#1 rec')) *)
    )
    
  fun defArr (p:program as {arrays,...}) s =
-   case SymTable.look(arrays,s) of ty =>
-    app print ["struct ", Symbol.unique s, " { int size; ", typeStr ty, " *elmts;};\n"]
+   case ST.look(arrays,s) of ty =>
+    app print ["struct ", Sym.unique s, " { ", typeStr ty, " *elmts;};\n"]
 
  fun decVar (p:program as {vars,...}) s = 
-  case SymTable.look(vars, s) of ty => 
-   app print [typeStr ty, " ", (Symbol.unique s), ";\n"]
-
+  case ST.look(vars, s)
+   of {ty,isRef=false} => app print [typeStr ty, " ", (Sym.unique s), ";\n"]
+    | _ => fuck()
 
  fun defProc (p:program as {blocks,procs,...}) s =
-  case (SymTable.look(blocks,s), SymTable.look(procs,s)) of (b,{res,args}) =>
-   ( app print [typeStr res, " ", Symbol.unique s, " ("]
-   ; appFmt (fn (ty,name) => app print [(typeStr ty), " ", (Symbol.unique name)])
-      "," ")\n" (ListPair.map id (args, (#args b)))
+  case (ST.look(blocks,s), ST.look(procs,s)) of (b as {args,...},{res,...}) =>
+   ( app print [typeStr res, " ", Sym.unique s, " ("]
+   ; appFmt (varDecPrint p) "," ")\n" args
    ; print "{\n"
-   ; app (decVar p) (exhaust (#args b) (#vars b))
-   ; app printStmt (#body b)
+   ; app (decVar p) (#vars b)
+   ; app (printStmt p) (#body b)
    ; print "}\n"
    )
 
- and malloc ty exp =
+ and malloc p ty exp =
    ( app print
       ["(", typeStr ty, ")malloc(sizeof(struct ", typeStr ty, ") * ("]
-   ; (case exp of NONE => print "1" | SOME x => printTExp x)
+   ; (case exp of NONE => print "1" | SOME x => (printTExp p) x)
    ; print "))"
    )
 
- and printVar v = case v
-    of SIMPLE s => print (Symbol.unique s)
-     | FIELD (v',s) => (printVar v'; print "."; print (Symbol.unique s))
-     | INDEX (v',e) => (printVar v'; print ".elts["; printTExp e; print "]")
+ and printVar p v = case v
+    of SIMPLE s => app print 
+        ["(", if #isRef(ST.look(#vars p,s)) then "*" else "", Sym.unique s, ")"]
+     | FIELD (v',s) => (printVar p v'; print "."; print (Sym.unique s))
+     | INDEX (v',e) => (printVar p v'; print ".elts["; (printTExp p) e; print "]")
 
- and printStmt stmt = 
+ and printStmt p stmt = 
   case stmt 
    of ASSIGN {var, exp} =>
      (case exp
        of {ty=Type.STR,...} => 
-           ( print "strdup(";  printVar var; print ", "
-           ; printTExp exp; print ");\n"
+           ( print "strdup(";  printVar p var; print ", "
+           ; (printTExp p) exp; print ");\n"
            )
-        | _ => (print "="; printTExp exp; print ";\n")
+        | _ => (print "="; (printTExp p) exp; print ";\n")
      )
     | IF {test, then', else'} =>
-       ( print "if ("; printTExp test; print ") {\n"
-       ; app printStmt then'; print "}\n else {\n"; app printStmt else'; print "}\n"
+       ( print "if ("; (printTExp p) test; print ") {\n"
+       ; app (printStmt p) then'; print "}\n else {\n"; app (printStmt p) else'; print "}\n"
        )
-    | EXP te => (printTExp te; print ";\n")
-    | RETURN te => (print "return "; printTExp te; print ";\n")
-    | LABEL s => app print [Symbol.unique s, ":\n"]
-    | GOTO s => app print ["goto ", Symbol.unique s, ";\n"]
+    | EXP te => ((printTExp p) te; print ";\n")
+    | RETURN te => (print "return "; (printTExp p) te; print ";\n")
+    | LABEL s => app print [Sym.unique s, ":\n"]
+    | GOTO s => app print ["goto ", Sym.unique s, ";\n"]
 
- and printTExp (te as {e, ty}) = 
-  case e
-   of ARR size => malloc ty (SOME size)
-    | REC => malloc ty NONE
-    | CALL {func, args} =>
-       ( app print [Symbol.unique func, "("] 
-       ; appFmt printTExp ", " ")" args
-       ) 
-    | INT i => print (Int.toString i)
-    | STR str => app print ["\"", str, "\""]
-    | OP {left, oper, right} => 
-       ( case left
-          of {ty=Type.STR,e} => 
-              ( print "(strcmp("; printTExp left; print ", "; printTExp right; print ")"
-              ; app print [opname oper, "0?1:0)"]
-              ) 
-           | _ => (print "("; printTExp left; print (opname oper); printTExp right; print ")")
-       )
-    | VAR v => printVar v
-    | NULL => print "NULL"
+ and isRef p v = #isRef(ST.look(#vars p,v))
+ and printTExp p (te as {e, ty}) = 
+  let fun printArg (exp,var) =
+       case (exp, isRef p var)
+        of ({ty,e=VAR(SIMPLE sv)},true) => if isRef p sv then printTExp p exp
+                                                  else (print "&"; printTExp p exp)
+         | (_,false) => printTExp p exp
+         | (_,true) => shit()
+  in
+   case e
+    of ARR size => malloc p ty (SOME size)
+     | REC => malloc p ty NONE
+     | CALL {func, args} => 
+        let val {args=argVars,...} = ST.look(#blocks p,func)
+        in app print [Sym.unique func, "("]
+         ; appFmt printArg ", " ")" (ListPair.zipEq (args,argVars))
+        end
+     | INT i => print (Int.toString i)
+     | STR str => app print ["\"", str, "\""]
+     | OP {left, oper, right} => 
+        ( case left
+           of {ty=Type.STR,e} => 
+               ( print "(strcmp("; (printTExp p) left; print ", "; (printTExp p) right; print ")"
+               ; app print [opname oper, "0?1:0)"]
+               ) 
+            | _ => (print "("; (printTExp p) left; print (opname oper); (printTExp p) right; print ")")
+        )
+     | VAR v => printVar p v
+     | NULL => print "NULL"
+  end
 
  fun printProg (p as {main, procs, arrays, records,...}) = 
-   ( print "#include <stdio.h>\n#include <stdlib.h>\n"
+   ( print "#include <stdio.h>\n#include <stdlib.h>\n#include <string>\n"
    ; printStdLib
-   ; SymTable.appi ((decRec p) o #1) records
-   ; SymTable.appi ((decArr p) o #1) arrays
-   ; SymTable.appi ((decProc p) o #1) procs
-   ; SymTable.appi ((defRec p) o #1) records
-   ; SymTable.appi ((defArr p) o #1) arrays
-   ; SymTable.appi ((defProc p) o #1) procs
-   ; app print ["int main () {\n", Symbol.unique main]
+   ; ST.appi ((decRec p) o #1) records
+   ; ST.appi ((decArr p) o #1) arrays
+   ; ST.appi ((decProc p) o #1) procs
+   ; ST.appi ((defRec p) o #1) records
+   ; ST.appi ((defArr p) o #1) arrays
+   ; ST.appi ((defProc p) o #1) procs
+   ; app print ["int main () {\n", Sym.unique main]
    ; print "()}\n"
    ) 
 
