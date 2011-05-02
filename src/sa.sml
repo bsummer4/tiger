@@ -80,6 +80,7 @@ structure Semantic = struct
     | assertTy' (t::ts) t' =
        if T.compatible(t,t') then () else assertTy' ts t'
 
+  (* smap :: (s*'a -> s*'b) -> s > 'a list *)
   fun smap f (s:s) al =
    let fun r acc [] = acc
          | r (s,x'l) (x::xs) =
@@ -88,7 +89,15 @@ structure Semantic = struct
    in r (s,[]) al
    end
 
-  (* cvt :: (s,exp) -> (s,exp) *)
+(*
+	A couple of utillity functions for dealing with symbol->value
+	maps. In `STcombine' we assume that both tables have idential
+	sets of keys.
+*)
+  fun fromAlist l = foldl (fn((k,v),t)=>ST.insert(t,k,v)) ST.empty l
+  fun STcombine t t' = ST.mapi (fn (k,v) => (v,ST.lookup(t',k))) t
+
+  (* cvt :: s*A.exp -> s*I.exp *)
   fun cvt (state:s as (blocks,scope,program), exp) =
    let
 
@@ -96,9 +105,16 @@ structure Semantic = struct
 
     fun rec' {fields,typ,pos} =
      let val rty = case getType typ of T.REC r => r | _ => raise TypeError
-         val etys = ST.lookup (#arrays program,rty)
-     in TODO()
-        (*case smap (fn ... => cvt ...) state fields of (s,fields') => TODO()*)
+         val etys = fromAlist (ST.lookup(#records program,rty))
+         val (state',exps) = (smap
+                              (fn (s,(n,e,p)) =>
+                               (case cvt(s,e)of(s',e')=>(s',(n,e'))))
+                              state
+                              fields)
+         val exps' = fromAlist exps
+         val init = STcombine etys exps'
+         fun combine (k,(fty,{e,ty})) = (assertTy ty fty; {e=e,ty=ty})
+     in (state',{ty=T.REC rty,e=I.REC(ST.mapi combine init)})
      end
 
     fun arr {typ,size,init,pos} =
@@ -127,6 +143,15 @@ structure Semantic = struct
       | (s,el) => case last el of {ty,e} =>
          (s,{ty=ty,e=I.SEQ el})
 
+    fun var (A.SIMPLE(n,_)) = (state,TODO(),I.SIMPLE(getVar n))
+      | var (A.FIELD(v,n,_)) = (case var v of (s,ty,v') =>
+                                (s,TODO(),I.FIELD(v',n)))
+      | var (A.INDEX(v,i,_)) = (case var v of (s,ty,v') =>
+                                (case cvt (s,i) of (s',i') =>
+                                 (s',TODO(),I.INDEX(v',i'))))
+
+    fun varExp v = case var v of (s,ty,v') => (s,{ty=ty,e=I.VAR v'})
+
    in case exp
        of A.NIL => (state,{ty=T.NIL,e=I.NIL})
         | A.BREAK _ => (state,{ty=T.UNIT,e=I.BREAK})
@@ -136,7 +161,7 @@ structure Semantic = struct
         | A.REC r => rec' r
         | A.ARRAY a => arr a
         | A.OP {left,oper,right,pos} => op' (oper,left,right)
-        | A.VAR var => TODO()
+        | A.VAR v => varExp v
         | A.CALL {func,args,pos} => TODO()
         | A.ASSIGN {var,exp,pos} => TODO()
         | A.IF {test,then',else',pos} => TODO()
@@ -146,90 +171,3 @@ structure Semantic = struct
    end
  end
 end
-
-(*
-    fun ifthen' (s:s) (c,t) =
-     let val rtype = expType env then'
-     in expect env T.INT test
-      ; case else' of (SOME elseExp) => (expect env rtype elseExp; rtype)
-                    | NONE => T.NIL
-     end
-
-    fun oper (o',l,r) =
-     let val (s',[(lty,le),(rty,re)]) = cvts s [l,r]
-     in assertTy lty rty
-      ; case operClass o'
-         of INT_OP => assertTy INT lty
-          | CMP_OP => assertTy' [T.INT,T.STR] lty
-          | EQ_OP => ()
-      ; (s',{ty=INT,e=OP{oper=cvtop o',left=l,right=r}})
-     end
-
- fun expect (s:s) ty exp =
-  if T.compatible (ty,expType env exp) then ()
-  else raise TypeError
-
- and expectMatch (s:s) (a,b) =
-  case expType env a
-   of T.UNIT => raise TypeError
-    | aType => expect env aType b
-
- and varType (s:s) var =
-  case var
-   of A.SIMPLE(sym,pos) => getVar env sym
-    | A.FIELD(var,sym,pos) =>
-       (case varType env var
-         of T.REC(flist,u) =>
-             (case List.find (fn (field,_) => field=sym) flist
-               of SOME(_,ty) => ty
-                | NONE => raise TypeError)
-          | _ => raise TypeError)
-    | A.INDEX(var,exp,pos) =>
-       ( expect env T.INT exp
-       ; case varType env var of T.ARR (ty,u) => ty | _ => raise TypeError
-       )
-
- and operType {left,right,oper,pos} =
-  ( case operClassify oper
-     of INT_OP => app (expect env T.INT) [left,right]
-      | CMP_OP => expectMatch env (left,right)
-  ; T.INT
-  )
-
- and recType (s:s) {fields,typ,pos} =
-  let fun names ((a,_),(b,_)) = (a,b)
-      val sort = insertionSort (Symbol.compare o names)
-      fun match ab bc = sort ab = sort bc
-      val ty = getType env typ
-      fun extractFields (T.RECORD(fields,_)) = fields
-        | extractFields _ = raise TypeError
-  in
-   if match (map (fn(sym,e,_)=>(sym,expType env e)) fields)
-       (extractFields ty)
-   then ty
-   else raise TypeError
-  end
-
- and arrType (s:s) {typ,size,init,pos} =
-  case getType env typ of ty =>
-   ( expect env T.INT size
-   ; expect env (case ty of T.ARR(t,_)=>t | _=>raise TypeError) init
-   ; ty )
-
- and expType (s:s) exp =
-  case exp
-   of
-    | A.ASSIGN {var,exp,pos} => (expect env (varType env var) exp; T.NIL)
-    | A.SEQ [] => T.NIL
-    | A.SEQ el => last (map ((expType env) o #1) el)
-    | A.LET {decs,body,pos} => TODO()
-    | A.VAR v => varType env v
-    | A.IF e => ifType env e
-    | A.REC r => recType env r
-    | A.ARRAY a => arrType env a
-    | A.WHILE w => TODO()
-    | A.FOR f => TODO()
-    | A.OP oper => operType env oper
-    | A.CALL c => TODO()
-end
-*)

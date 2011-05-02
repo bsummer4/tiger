@@ -49,7 +49,7 @@ fun foldExp f acc exp =
        | (v as VAR vd) => varr (f acc v) vd
        | (w as WHILE {test=t,body=b}) => f (f (f acc w) (#e b)) (#e t)
        | (s as SEQ l) => foldl (hack f) (f acc s) (map #e l)
-       | (r as REC l) => foldl (hack f) (f acc r) (map (#e o #2) l)
+       | (r as REC t) => ST.foldl (hack f) (f acc r) (ST.mapi (#e o #2) t)
        | (c as CALL {args=a,...}) => foldl (hack f) (f acc c) ((map #e (!a)):IR.exp list)
   in expr acc exp
   end

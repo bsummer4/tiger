@@ -5,14 +5,15 @@
 
 structure IR = struct
  type sym = Symbol.symbol
+ structure ST = SymTable
 
  structure Type = struct
   datatype ty
    = NIL | INT | STR | UNIT | REC of sym | ARR of sym | FUN of sym
 
-  type arrays = ty SymTable.map
-  type records = (sym * ty) list SymTable.map
-  type procs = {res:ty,args:ty list} SymTable.map
+  type arrays = ty ST.map
+  type records = (sym * ty) list ST.map
+  type procs = {res:ty,args:ty list} ST.map
 
   fun compatible (a,b) =
    if a=b then true else case (a,b)
@@ -33,7 +34,7 @@ structure IR = struct
   | INT of int
   | NIL
   | OP of {left:texp, oper:oper, right:texp}
-  | REC of (sym * texp) list
+  | REC of texp ST.map
   | SEQ of texp list
   | STR of string
   | VAR of var
@@ -56,8 +57,8 @@ structure IR = struct
     , body:texp
     }
 
- type vars = {typ:Type.ty, block:sym, ref':bool} SymTable.map
- type blocks = block SymTable.map
+ type vars = {typ:Type.ty, block:sym, ref':bool} ST.map
+ type blocks = block ST.map
  type program =
   { main:sym
   , blocks:blocks
