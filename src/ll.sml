@@ -1,6 +1,4 @@
-(* structure LL = struct
-  open IR;
-end *)
+structure LL = struct
 
 open IR;
 structure ST = SymTable;
@@ -18,13 +16,6 @@ fun keys t = ST.foldli (fn(k,v,acc) => k::acc) [] t
    
    If any call sites were modified, do another pass
 
-foo {
-
-  int x;
-  bar {
-     x := y
-  }
-
 *)
 
 fun foldExp f acc exp =
@@ -41,7 +32,8 @@ fun foldExp f acc exp =
        | (a as ASSIGN {var=v,exp=e}) => varr (f (f acc a) (#e e)) v
        | (b as BREAK) => f acc b
        | (i as IF {test=t,then'=th}) => f (f (f acc i) (#e th)) (#e t)
-       | (i as IFELSE {test=t,then'=th,else'=e}) => f (f (f (f acc i) (#e e)) (#e th)) (#e t)
+       | (i as IFELSE {test=t,then'=th,else'=e}) => 
+          f (f (f (f acc i) (#e e)) (#e th)) (#e t)
        | (i as INT _) => f acc i
        | (n as NIL) => f acc n
        | (o' as OP {left=l,right=r,...}) => f (f (f acc o') (#e r)) (#e l)
@@ -50,7 +42,8 @@ fun foldExp f acc exp =
        | (w as WHILE {test=t,body=b}) => f (f (f acc w) (#e b)) (#e t)
        | (s as SEQ l) => foldl (hack f) (f acc s) (map #e l)
        | (r as REC t) => ST.foldl (hack f) (f acc r) (ST.mapi (#e o #2) t)
-       | (c as CALL {args=a,...}) => foldl (hack f) (f acc c) ((map #e (!a)):IR.exp list)
+       | (c as CALL {args=a,...}) =>
+          foldl (hack f) (f acc c) ((map #e (!a)):IR.exp list)
   in expr acc exp
   end
 
@@ -72,14 +65,12 @@ fun foldVars f acc exp =
   in r f acc exp
   end
 
-(* get a list of call sites *)
-type callSite = texp list ref
-type callMap = callSite list ST.map
 
 (* get blocks *)
 fun getBlocks ({blocks,...}:program) =
   ST.foldl (fn (b,a) => (((#e o #body) b)::a)) [] blocks
 
+(* get a list of call sites *)
 fun addCall acc (CALL {func,args}) = 
   (case ST.find(acc,func)
   of SOME sites => ST.insert(acc,func,args::sites)
@@ -124,3 +115,5 @@ fun rewriteCalls p =
   in
     app rewrite fvs
   end
+
+end
