@@ -89,49 +89,49 @@ structure Semantic = struct
    end
 
   (* cvt :: (s,exp) -> (s,exp) *)
-  fun cvt (s:s as (bs,scope,pgm), exp) =
+  fun cvt (state:s as (blocks,scope,program), exp) =
    let
 
-    val (getType,getVar) = (getType s,getVar s)
+    val (getType,getVar) = (getType state,getVar state)
 
     fun rec' {fields,typ,pos} =
      let val rty = case getType typ of T.REC r => r | _ => raise TypeError
-         val etys = ST.lookup (#arrays pgm,rty)
+         val etys = ST.lookup (#arrays program,rty)
      in TODO()
-        (*case smap (fn ... => cvt ...) s fields of (s',fields') => TODO()*)
+        (*case smap (fn ... => cvt ...) state fields of (s,fields') => TODO()*)
      end
 
     fun arr {typ,size,init,pos} =
      let val aty = case getType typ of T.ARR a => a | _ => raise TypeError
-         val ety = ST.lookup (#arrays pgm,aty)
-     in case smap cvt s [size,init]
+         val ety = ST.lookup (#arrays program,aty)
+     in case smap cvt state [size,init]
          of (s',[s as{ty=tys,e=es}, i as{ty=tyi,e=ei}]) =>
              if tys<>T.INT orelse tyi<>ety then raise TypeError
              else (s',{ty=T.ARR aty,e=I.ARR{size=s,init=i}})
           | _ => raise Match
      end
 
-    fun op' (op',l,r) = case smap cvt s [l,r]
-     of (s',[l' as{ty=lty,e=le}, r' as{ty=rty,e=re}]) =>
+    fun op' (op',l,r) = case smap cvt state [l,r]
+     of (s,[l' as{ty=lty,e=le}, r' as{ty=rty,e=re}]) =>
          ( assertTy lty rty
          ; case operClassify op'
             of INT_OP => assertTy T.INT lty
              | CMP_OP => assertTy' [T.INT,T.STR] lty
              | EQ_OP => ()
-         ; (s',{ty=T.INT,e=I.OP{oper=irop op',left=l',right=r'}})
+         ; (s,{ty=T.INT,e=I.OP{oper=irop op',left=l',right=r'}})
          )
       | _ => raise Match
 
-    fun seq es = case smap cvt s es
-     of (s',[]) => (s',{ty=T.UNIT,e=I.SEQ[]})
-      | (s',el) => case last el of {ty,e} =>
-         (s',{ty=ty,e=I.SEQ el})
+    fun seq es = case smap cvt state es
+     of (s,[]) => (s,{ty=T.UNIT,e=I.SEQ[]})
+      | (s,el) => case last el of {ty,e} =>
+         (s,{ty=ty,e=I.SEQ el})
 
    in case exp
-       of A.NIL => (s,{ty=T.NIL,e=I.NIL})
-        | A.BREAK _ => (s,{ty=T.UNIT,e=I.BREAK})
-        | A.INT i => (s,{ty=T.INT,e=I.INT i})
-        | A.STR (str,p) => (s,{ty=T.STR,e=I.STR str})
+       of A.NIL => (state,{ty=T.NIL,e=I.NIL})
+        | A.BREAK _ => (state,{ty=T.UNIT,e=I.BREAK})
+        | A.INT i => (state,{ty=T.INT,e=I.INT i})
+        | A.STR (str,p) => (state,{ty=T.STR,e=I.STR str})
         | A.SEQ es => seq (map #1 es)
         | A.REC r => rec' r
         | A.ARRAY a => arr a
