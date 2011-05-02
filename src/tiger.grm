@@ -9,7 +9,7 @@ open ParseUtils
 %pos int
 %noshift Eof
 %start prog
-%verbose 
+%verbose
 
 %nonassoc Do If Of
 %nonassoc Else
@@ -23,10 +23,10 @@ open ParseUtils
 
 %nonassoc Umin
 
-%term Eof    | Comma | Colon | Semi | Lparen | Rparen | Lbrak | Rbrak | Lbrace 
-    | Rbrace | Dot   | Add   | Sub  | Mul    | Div    | Eq    | Neq   | Lt 
-    | Le     | Gt    | Ge    | And  | Or     | Assign | Array | If    | Then 
-    | Else   | While | For   | To   | Do     | Let    | In    | End   | Of 
+%term Eof    | Comma | Colon | Semi | Lparen | Rparen | Lbrak | Rbrak | Lbrace
+    | Rbrace | Dot   | Add   | Sub  | Mul    | Div    | Eq    | Neq   | Lt
+    | Le     | Gt    | Ge    | And  | Or     | Assign | Array | If    | Then
+    | Else   | While | For   | To   | Do     | Let    | In    | End   | Of
     | Break  | Nil   | Fun   | Var  | Type   | Umin
 
     | String of string | Integer of int | Id of string
@@ -55,7 +55,7 @@ exp : const  (const)
     | flow   (flow)
     | lval   (lval)
     | array  (array)
-    | assign (assign) 
+    | assign (assign)
     | let'   (let')
 
 const : String  (STR(String,Stringleft))
@@ -119,9 +119,9 @@ dec   : tdec                (tdec)
       | vdec                (vdec)
 vdec  : Var Id Assign exp
           (newvardec(mk Id, NONE, exp, Varleft))
-      | Var Id Colon Id Assign exp 
+      | Var Id Colon Id Assign exp
           (newvardec(mk Id1,SOME (mk Id2, Id2left), exp, Varleft))
-fdec  : Fun Id Lparen tfields Rparen Eq exp 
+fdec  : Fun Id Lparen tfields Rparen Eq exp
           (newfundec(mk Id, tfields, NONE, exp, Funleft))
       | Fun Id Lparen tfields Rparen Colon Id Eq exp
           (newfundec(mk Id1, tfields, SOME (mk Id2, Id2left), exp, Funleft))

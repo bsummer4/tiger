@@ -119,7 +119,7 @@ structure Semantic = struct
          val exps' = fromAlist exps
          val init = STcombine etys exps'
          fun combine (k,(fty,{e,ty})) = (assertTy ty fty; {e=e,ty=ty})
-     in (state',{ty=T.REC rty,e=I.REC(ST.mapi combine init)})
+     in (state',{ty=T.REC rty,e=I.REC(SOME(ST.mapi combine init))})
      end
 
     fun arr {typ,size,init,pos} =
@@ -128,7 +128,7 @@ structure Semantic = struct
      in case smap cvt state [size,init]
          of (s',[s as{ty=tys,e=es}, i as{ty=tyi,e=ei}]) =>
              if tys<>T.INT orelse tyi<>ety then raise TypeError
-             else (s',{ty=T.ARR aty,e=I.ARR{size=s,init=i}})
+             else (s',{ty=T.ARR aty,e=I.ARR{size=s,init=SOME i}})
           | _ => raise Match
      end
 
