@@ -34,7 +34,7 @@ fun foldExp f acc exp =
      case v
       of SIMPLE _ => acc
        | FIELD (v,_) => varr acc v
-       | INDEX (v,e) => varr (expr acc e) v
+       | INDEX (v,{ty,e}) => varr (expr acc e) v
     and expr acc e =
       case e
       of (a as ARR {init=i,size=s}) => f (f (f acc a) (#e s)) (#e i)
@@ -76,11 +76,9 @@ fun foldVars f acc exp =
 type callSite = texp list ref
 type callMap = callSite list ST.map
 
-(* get block bodies *)
-fun getBlockBodies ({blocks,vars,...}:program) =
-  let fun cur f t s = f(t,s)
-  in map (#e o #body o (cur ST.lookup blocks)) (keys blocks)
-  end
+(* get blocks *)
+fun getBlocks ({blocks,...}:program) =
+  ST.foldl (fn (b,a) => (((#e o #body) b)::a)) [] blocks
 
 fun addCall acc (CALL {func,args}) = 
   (case ST.find(acc,func)
@@ -88,12 +86,11 @@ fun addCall acc (CALL {func,args}) =
    | NONE       => ST.insert(acc,func,[args]))
    | addCall acc _ = raise Match
 
-fun createCallMap' (exp,acc) = foldCalls addCall acc exp
-fun createCallMap  (p:program) =
-   foldl createCallMap' ST.empty (getBlockBodies(p))
+fun createCallMap  (p:program) = let 
+  fun createCallMap' (exp,acc) = foldCalls addCall acc exp
+  in foldl createCallMap' ST.empty (getBlocks(p)) end
 
 (* find all unbound variables *)
-type freeList = (sym * sym list)
 fun addFreeVar (vt:vars) cb acc v = 
   let
     fun r v = 
@@ -101,16 +98,19 @@ fun addFreeVar (vt:vars) cb acc v =
       of SIMPLE s => s
        | FIELD (v,s) => r v
        | INDEX (v,e) => r v)
+    val s = r v
+    val t = {e=VAR(SIMPLE(s)),ty=(#typ (ST.lookup(vt,s)))}
   in
-    case ST.find(vt,(r v))
-     of SOME {block=b,...} => if b = cb then acc else v::acc
-      | NONE      => raise Match
+    case ST.find(vt,s)
+     of SOME {block=b,...} => if b = cb then acc else ST.insert(acc,s,t) 
+      | NONE               => raise Match
   end
 
 fun findFreeVars (p as {blocks,vars,...}:program) =
   let
-    val bods = getBlockBodies(p)
-    fun wrap (id,bod,acc) = (id,(foldVars (addFreeVar vars id) [] bod))::acc
+    val bods = getBlocks(p)
+    fun wrap (id,bod,acc) = 
+      (id,ST.listItems (foldVars (addFreeVar vars id) ST.empty bod))::acc
   in
     ListPair.foldlEq wrap [] ((keys blocks),bods)
   end
@@ -120,8 +120,7 @@ fun rewriteCalls p =
   let
     val cm  = createCallMap p
     val fvs = findFreeVars p
-    fun rewriteCall' vs c = c := List.concat [vs,!c]
-    (*fun rewriteCall cm (id,vs) = app (rewriteCall' vs) ST.lookup(cm,id)*)
+    fun rewrite (id,vs) = app (fn c => c := List.concat[vs,!c]) (ST.lookup(cm,id))
   in
-    ()(*app (rewriteCall cm) fvs*)
+    app rewrite fvs
   end
