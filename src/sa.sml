@@ -89,6 +89,11 @@ structure Semantic = struct
    in r (s,[]) al
    end
 
+  fun elementType (_,_,program) (T.ARR r) = TODO()
+    | elementType _ _ = raise TypeError
+  fun fieldType (_,_,program) (T.REC r) n = TODO()
+    | fieldType _ _ _ = raise TypeError
+
 (*
 	A couple of utillity functions for dealing with symbol->value
 	maps. In `STcombine' we assume that both tables have idential
@@ -143,12 +148,22 @@ structure Semantic = struct
       | (s,el) => case last el of {ty,e} =>
          (s,{ty=ty,e=I.SEQ el})
 
-    fun var (A.SIMPLE(n,_)) = (state,TODO(),I.SIMPLE(getVar n))
-      | var (A.FIELD(v,n,_)) = (case var v of (s,ty,v') =>
-                                (s,TODO(),I.FIELD(v',n)))
-      | var (A.INDEX(v,i,_)) = (case var v of (s,ty,v') =>
-                                (case cvt (s,i) of (s',i') =>
-                                 (s',TODO(),I.INDEX(v',i'))))
+    fun var (A.SIMPLE(n,_)) =
+         let val n' = getVar n
+             val ty = #typ(ST.lookup(#vars program,n'))
+         in (state,ty,I.SIMPLE n')
+         end
+      | var (A.FIELD(v,n,_)) =
+         let val (s,rty,v') = var v
+             val fty = (fieldType s rty n)
+         in (s,fty,I.FIELD(v',n))
+         end
+      | var (A.INDEX(v,i,_)) =
+         let val (s,aty,v') = var v
+             val (s',i') = cvt (s,i)
+             val ety = (elementType s' aty)
+         in (s',ety,I.INDEX(v',i'))
+         end
 
     fun varExp v = case var v of (s,ty,v') => (s,{ty=ty,e=I.VAR v'})
 
