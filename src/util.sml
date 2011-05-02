@@ -1,6 +1,9 @@
 structure Util = struct
+ datatype swearWord = SHIT | FUCK
+ exception SwearWordException of swearWord
+ fun fuck() = raise SwearWordException FUCK
+ fun shit() = raise SwearWordException SHIT
  val FAIL = Fail "This shouldn't ever happen"
- fun fuck() = raise FAIL
 
  fun range n =
   let fun r sofar i = if i<0 then sofar else r (i::sofar) (i-1)
