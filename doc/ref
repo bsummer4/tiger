@@ -21,12 +21,12 @@ double quotes (“ “). String constants may contain escape sequences
 for printing special characters or suppressing printed whitespace. The
 escape sequences and their corresponding output are
 
-| \n	Newline
-| \t	Tab
-| \”	Double quote
-| \\	Backslash
-| \ddd	The character with the three digit ASCII code ddd.
-| \..\	Any whitespace characters between two backslashes will be ignored.
+| \n    Newline
+| \t    Tab
+| \”    Double quote
+| \\    Backslash
+| \ddd  The character with the three digit ASCII code ddd.
+| \..\  Any whitespace characters between two backslashes will be ignored.
 
 The keywords in Tiger are:
 
@@ -106,15 +106,15 @@ evaluated before being passed to the function. Note that, as usual,
 the evaluation order of the arguments is unspecified.
 
 ### Operators
-Tiger recognizes the following binary operators, listed from lowest to 
+Tiger recognizes the following binary operators, listed from lowest to
 highest precedence:
 
 - :=
 - |
-- & 
-- >=, <=, >, <, <>, = 
-- -, + 
-- /, * 
+- &
+- >=, <=, >, <, <>, =
+- -, +
+- /, *
 
 Tiger also has a unary minus operator, -, which negates a following
 integer expression. The unary has higher precedence than any binary

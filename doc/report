@@ -5,32 +5,28 @@ handful of ubiquitous programming languages in the industry today. The
 chances that the modern programmer will ever have to write a full-featured
 compiler are quite low. The closest one might get is writing a compiler
 for a DSL. But we did not choose this compiler course only for the
-practical experience of writing a compiler (though that was certainly
-useful experience), we chose this course because we all had a deep
-desire to learn more about one of the most fundamental tools in computer
-science. We also knew that one of the best ways to fully understand a
-concept is to deconstruct it and rebuild it. This course provided that
-very opportunity.
+practical experience of writing a compiler, we chose this course because
+we all had a deep desire to learn more about one of the most fundamental
+tools in computer science. We also knew that one of the best ways to
+fully understand a concept is to deconstruct it and rebuild it. This
+course provided that very opportunity.
 
-Unlike most courses, we were given significant latitude in our work,
+Unlike many courses, we were given significant latitude in our work,
 designing and implementing a project of our choosing. Of course, the
 question then is, what would we like to do? There are several criteria
 we could apply here. We need to balance the feasibility of our project
-against what we would actually like to implement. We also need to make
-sure our project is truly deserving of the title compiler (we are doing
-this for a grade after all), and to decide if we wanted to create our
-own language or to reimplement an existing one.
+against what we would actually like to implement. We also needed to decide
+if we wanted to create our own language or to reimplement an existing one.
 
-After much deliberation, we decided on implementing an existing language
-Tiger so we could focus on writing the compiler. Tiger isn't prohibitively
-complicated, but it still has enough issues to be a challenge.
-
-Tiger is a simple, general purpose language. It supports several of
-the interesting features of more complex languages, but little of the
-fat. This is helpful in two ways. Firstly, it makes writing the compiler
-simpler. Secondly, it gives us the potentiality to expand the language
+After much deliberation, we decided on implementing an existing
+language, Tiger, so we could focus on writing the compiler. Tiger
+isn't prohibitively complicated, but it still has enough issues to be
+a challenge. Tiger is a simple, general purpose language; it supports
+several of the interesting features of more complex languages, but little
+of the bloat. This is helpful in two ways. First, it makes writing the
+compiler easier. Secondly, it gives us the option to expand the language
 with constructs of our design if we so desire. As it turned out, we did
-not have enough time to work on extensions, because we ran into several
+not have enough time to work on extensions because we ran into several
 unforeseen issues during the development process. We will elaborate more
 on these issues later.
 
@@ -38,18 +34,21 @@ on these issues later.
 ## Language Reference Manual
 ## Project Plan
 Since our group was smaller than the other groups, we were able to operate
-with a fairly loose organization. We maintained a simple overarching goal:
-to write a working compiler. This goal was slowly whittled away at as we
-progressed. We had a general idea of what needed to be accomplished but
-didn't want to get bogged down with details from the beginning. Our group
-hierarchy was mostly flat and decisions were made democratically. Group
-roles were shared among us fairly equally. We had scheduled meetings
-on Tuesdays and Thursdays, but the actual meeting schedule changed from
-week to week according to the current state of the project. We briefly
-met after class to decide whether a meeting was necessary, whether it
-needed to be rescheduled, or if we possibly needed to schedule additional
-meetings that week. In addition to physical meetings, we used emails
-and text messaging to coordinate activity and discuss issues.
+with a fairly loose organization. We maintained a simple overarching
+goal: to write a working compiler. We steadily progressed toward our
+goal throughout the semester. We had a general idea of what needed to
+be accomplished but didn't want to get bogged down with details from
+the beginning.
+
+Our group hierarchy was mostly flat and decisions were made
+democratically. Group roles were shared among us fairly equally. We had
+scheduled meetings on Tuesdays and Thursdays, but the actual meeting
+schedule changed from week to week according to the current state of
+the project. We briefly met after class to decide whether a meeting
+was necessary, whether it needed to be rescheduled, or if we possibly
+needed to schedule additional meetings that week. In addition to physical
+meetings, we used emails and text messaging to coordinate activity and
+discuss issues.
 
 At the beginning of the project, the things we needed to do were fairly
 straightforward. When we were working on the initial documentation and
@@ -62,14 +61,14 @@ between the modules until we all had a good understanding of all the
 issues.
 
 Due to our flexible group structure, we were able to reorganize and try
-a new approach, focusing on lots of group discussion to try to isolate
+a new approach. We focused on lots of group discussion to try to isolate
 and resolve as many issues as possible before creating well defined
 contracts that needed to be met by each phase of the compiler. This was
-still a difficult task and required several revisions, but was working
-much better with the emphasis on better group communication. Towards
-the end of the project, we realized that the most effective approach
-involved not only group discussion, but actual group coding. We were
-able to help each other and work out issues as they arose.
+still a difficult task and required several revisions, but through better
+communication we were able to make steady progress. Towards the end of
+the project, we realized that the most effective approach involved not
+only group discussion, but actual group coding. We were able to help
+each other and work out issues as they arose.
 
 ## Language Evolution
 Not applicable.
@@ -105,9 +104,9 @@ compiler architecture consisted of the following passes:
 	Responsible solely for type-checking.
 
 - Let Coalescing
-	This pass assumes that the AST it is given is semantically
+	This pass assumes that the given AST is semantically
 	correct. After the transformation each function (and the top-level
-	expression)_will start with a let expression that contains all
+	expression) will start with a let expression that contains all
 	variable, type, and nested function declarations. After this
 	transformation there will be no nested lets.
 
@@ -119,112 +118,109 @@ compiler architecture consisted of the following passes:
 	enclosing functions activation record. After this record is
 	built, all variable access needs to be changed to go through
 	the AR instead. Also, nested functions need to be passed their
-	parents AR as an extra argument. After this pass, each function
+	parent's AR as an extra argument. After this pass, each function
 	has a single activation record, which is its only local variable.
 
 - Globalization
 	This pass assumes that each function has no free variables,
-	which is ensured by the addition of ARs. Each function is made
-	global by moving it to a top-level let, which serves as a global
-	namespace. After this pass, there is a single top-level let
+	which is handled by the previous pass. Each function is made
+	global by moving it to the top-level let, which serves as a
+	global namespace. After this pass, there is a single top-level let
 	expression that contains all type and function declarations. Each
-	function contains a only single let expression with just the
+	function contains exactly one let expression with just the
 	variable declaration of it's activation record.
 
 This approach had some significant problems. Maintaining all these
-assumptions between transformations is complicated and error-prone. Also
+assumptions between transformations is complicated and error-prone. Also,
 there were situations were we needed to represent things that aren't
-valid in tiger.
+valid in Tiger.
 
 	- The let-expression of a function with no local variables
 	  contains an empty declaration list.
 	- We need to maintain the order in which variables are
-	  initialized, but we need to move all variable declarations
-	  to one place. So we needed to add support to the AST for
-	  uninitialized variables, then make initializations into
-	  explicit assignments.
+	  initialized, but we also need to move all variable declarations
+	  to one place. This required a hack on the AST to support
+	  uninitialized variables, and then we had to make initializations
+	  into explicit assignments.
 
 These are all enormous hacks, so we decided to make a separate
 representation for each transformation. The idea was to make new data
-structures for easier representing and enforcing the assumptions of
-transformation. The representations we came up with were just variations
-on the AST. This was an improvement, but it still had significant
-limitations. Defining so many representations was a lot of code, and it
-was hard to keep track of everything. Worse, the AST-like representations
-were really difficult to manipulate.
+structures so we could more easily represent and enforce the assumptions
+of the transformation. The representations we came up with were just
+variations on the AST. This was an improvement, but it still had
+significant limitations. Defining so many representations was a lot of
+code, and it was hard to keep track of everything. Worse, the AST-like
+representations were really difficult to manipulate.
 
-Eventually we had the idea (inspired by the MLton implementation)
-of using symbol renaming to make all names globally unique. This way
-we can store information about each compiler object in a big set of
+Eventually, we had the idea (inspired by the MLton implementation) of
+using symbol renaming to make all names globally unique. This allowed
+us to store information about each compiler object in a big set of
 tables. Once we started using this, a lot of problems disappeared. We
 were able to simplify down to just two representations: the AST and
 the IR. Let coalescing was handled naturally by the semantic analysis,
 we stopped using activation records and switched to lambda lifting,
 and globalization is a non-issue since functions are all separate data
-structures anyways.
+structures anyway.
 
 This mostly worked, but we ran into some more problems when we started
 doing the code generation. At first, we thought we could deal with the
-expression/statement issues during code-generation, but it turned out to
-be more complicated than we thought. We decided to move that complexity
-to another transformation on the IR, but ran into the same problems we had
+expression/statement issues during this phase, but it turned out to be
+more complicated than we thought. We decided to move that complexity to
+another transformation on the IR, but ran into the same problems we had
 with the AST: The code generation needed to make too many hard-to-enforce
 assumptions about the IR, and we started needing to add hacks to the IR
 to represent things.
 
-To resolve this, we made another representation, the CIR, which is
-similar the IR. It makes a distinction between statements and expressions,
-contains no loops (goto/label instead), doesn't support nested functions,
-and arrays and records must be explicitly allocated and initialized.
+To resolve this, we made another representation, the CIR, which is similar
+the IR with some additional restrictions. It makes a distinction between
+statements and expressions, contains no loops (goto/label instead),
+doesn't support nested functions, and arrays and records must be
+explicitly allocated and initialized.
 
 ### Transformations
 The final compiler architecture consists of six phases and three data
-structures. Each phase produced a new data structure when the performed
-transformation was not representable in the previous data structure. The
-lexer and parser transformed the source code file into an AST representing
-the structure of the Tiger program. These transformations were fairly
-straightforward and do not warrant much discussion.
+structures. The lexer and parser transformed the source code file into an
+AST representing the structure of the Tiger program. These transformations
+were fairly straightforward and do not warrant much discussion.
 
 The semantic analysis was responsible for making each name unique,
-resolving references, and creating the IR. The construction of the IR
-involves getting rid of the concept of let expressions, which are replaced
-with with blocks. A block corresponds to a function and contains all
-of the local variables and the expression body for the function. Blocks
+resolving references, and creating the IR. The construction of the
+IR involves getting rid of the concept of let expressions, which are
+replaced with blocks. A block corresponds to a function and contains all
+of the local variables and the expression body for that function. Blocks
 also keep track of which blocks are nested in them and which block they
-are nested in (if any). A main is created that contains all variable
-declarations and code that is not in any function. Blocks form the
-central unit of the IR.
+are nested in (if any). A top-level block is created that contains all
+variable declarations and code that is not in any function.
 
 The next transformation is lambda lifting, which which removes all block
-nesting. To do this, we must replace all non-local (free) variables
-with pass-by-reference arguments. This involves modifying a function's
-argument list and any calls to a function. We also need to add support
-to the IR for pass-by-reference arguments so that we can support mutating
-free variables.
+nesting. To do this, we must replace all non-local (free) variables with
+pass-by-reference arguments. This involves modifying a function's argument
+list and any calls to that function. We also need to add support to the
+IR for pass-by-reference arguments so that we can write to non-local
+variables.
 
 We based our lambda-lifting algorithm on the one from the Wikipedia page,
 it works as follows:
 
 .1. Replace each free variable in each block with an additional argument
     to the enclosing function. Modify each call to that function to pass
-    an in the extra arguments.
+    in the extra arguments.
 .2. Repeat until all there are no free variables.
 
-The final transformation of an internal structure is what we call
-c-ification. It transforms the IR, which still does not distinguish
-between expressions and statements, to the CIR. This is a non-trivial
-transformation. It first involves making array and record initialization
-explicit. What that means is arrays are malloc'd where needed, because
-Tiger has no notion of memory management. Similarly, each record must be
-explicitly allocated and initialized.In Tiger, array and record literals
-may be used as expressions and, say, passed to a function. Since this
-includes implicit initialization, we must replace the literal with a
-temporary value beforehand, explicitly assign a value to this temporary,
-and lastly pass the temporary to the function. Finally, we must handle
-loops and conditionals. In C, these are statements, but in Tiger these
-are expressions. What this means is that, for example, a for loop may
-occur inside a if condition. This makes no sense in C, so we need to move
-the for loop out. Any other weird combination must be similarly handled,
+We call the last major transformation in our compiler "c-ification." It
+transforms the IR, which still does not distinguish between expressions
+and statements, to the CIR. This is actually harder than it sounds. It
+first involves making array and record initialization and allocation
+explicit.  Similarly, each record must be explicitly allocated
+and initialized. In Tiger, array and record literals may be used as
+expressions and, say, passed to a function. Since this includes implicit
+initialization, we must replace the literal with a temporary value
+beforehand, explicitly assign a value to this temporary, and lastly
+pass the temporary to the function. Finally, we must handle loops
+and conditionals. In C, these are statements, but in Tiger these are
+expressions. What this means is that, for example, a for loop may occur
+inside a if condition. This makes no sense in C, so we need to move the
+for loop out. Any other weird combination must be similarly handled,
 either by moving expressions out (or in the case of loops) in.
 
 Once we build the final representation, it's fairly straightforward to
@@ -232,9 +228,9 @@ generate C source code. We generate code in the following manner:
 
 	- Include <stdio.h>, <stdlib.h>, and <string.h>
 	- Print out the Tiger standard library.
-	- Forward declarations for functions and arrays and record
-	  types. This is needed to support mutually recursive records
-	  and functions.
+	- Forward declarations for arrays and records as well as function
+	  prototypes. This is needed to support mutually recursive
+	  records and functions.
 	- Output structure declarations for arrays and records.
 	- Output function definitions.
 	- Output the C-language entry point: main
@@ -242,22 +238,22 @@ generate C source code. We generate code in the following manner:
 ## Development Environment
 Tool choice has a big impact on a project, but we had a pretty solid
 idea going into the class about what tools we wanted to use. We wrote
-our compiler in Standard ML (SML), build with make, and managed our
+our compiler in Standard ML (SML), built with make, and managed our
 code-base with git.
 
 SML is a particularly expressive functional language. Like other
-high-level languages, it abstracts away issues like memory management and
-type declarations, letting the programmer focus on the actual problem at
-hand. But how well suited is SML for the particular problem of compiler
-writing?
+high-level languages, it abstracts away issues such as memory management
+and type declarations, letting the programmer focus on the actual
+problem at hand. But how well suited is SML for the particular problem
+of compiler writing?
 
 Because of the scale and complexity of compilers, an implementation
-language should have a strong module system, allowing the programmer to
-develop and test functional units separately. The SML module system is
-very different from the class-based one you would find in Python or
+language should have a strong module system, allowing the programmer
+to develop and test functional units separately. The SML module system
+is very different from the class-based one you would find in Python or
 Java. SML uses structures which are collections of types and values,
 signatures which are contracts for structures, and functors which are
-parameterized structures. Functors are used in a similar way as C++
+parameterized structures. Functors are used in a way similar to C++
 templates, but don't have the all the messy complexity problems.
 
 SML also supports an excellent type system that allows users to
@@ -269,7 +265,7 @@ it invalidly. This cuts back significantly on the number of special
 cases we need to handle. What that means for the programmer: if the
 program compiles, one knows immediately that it is correct, not just
 syntactically, but semantically. This approach is often referred to as
-"Make invalid states unrepresentable".
+"Make invalid states unrepresentable."
 
 Like most functional languages, SML makes using recursion very
 natural. This matches perfectly with the deeply recursive data-structures
@@ -277,12 +273,12 @@ used by compilers. Using the pattern matching facilities and parametric
 datatypes, a developer can easily recurse through complex data structures
 with only a few lines of code. As an example, we wrote a function to
 walk through our abstract syntax tree, applying an arbitrary function to
-each element and accumulating the results. This only required 30 lines of
+each element and accumulating the results. This required only 30 lines of
 code. To do this using the object-oriented paradigm in C++, each element
 would need a separate class derived from the same base class, essentially
 repeating the same block of code over and over again save one function,
 which would provide the required polymorphic functionality. And that
-doesn't even allow for parametricity. That would require even more code,
+doesn't even allow for parametricity, which would require even more code,
 i.e. a template.
 
 We've included an example to show how easy it is to manipulate expressions
@@ -327,24 +323,16 @@ But a good development environment is more than just a language. One also
 needs a good debugger. Fortunately, there is an SML implementation known
 as SML/NJ which provides an interactive SML development environment. Small
 code snippets can be written directly on the command line and executed
-interactively. This also the programmer to test functions immediately
+interactively. This allows the programmer to test functions immediately
 after writing them by loading them into the environment and then providing
 sample test inputs, avoiding a lengthy compilation process and extra
 test input files.
 
-:SLOPPY:
-Since the functional style doesn't use global state, functions can be
-usually tested separate from the rest of the code. Usually, when you
-write a new function you can just copy-paste it into the interpreter
-and throw some inputs at it. You don't need to setup a bunch of global
-state and interdependent states just to test a method.
-
-To compile our project, we chose the excellent MLton compiler, which uses
-whole program analysis to allow for maximum optimization. However, it
-takes quite a while to build. That was a large reason we did not simply
-use MLton compiled programs for debugging, as each test build would
-take several minutes to complete. In addition, whole program compilation
-allows for dead-simple builds because no dependencies need to be managed.
+Since the functional style doesn't use global state, functions can usually
+be tested separately from the rest of the code. Usually, when you write
+a new function you can just copy-paste it into the interpreter and throw
+some inputs at it. You don't need to setup a bunch of global state and
+instantiate interdependent objects just to test a method.
 
 To manage our releases, we used a simple set of makefiles. Though make
 is often supplemented with additional tools, it is more than capable of
@@ -353,8 +341,7 @@ can call shell commands to provide make with any programmability it does
 not contain internally. Actually, we used the lesser known plan9 mk. It
 is basically the same idea as make, but with cleaner syntax and semantics.
 
-To perform code sharing, we chose Git instead of RCS, CVS, Hg, tarballs,
-and diff/patch for several reasons. Firstly, Git uses a distributed
+To perform code sharing, we chose Git. Firstly, Git uses a distributed
 architecture where everyone maintains a complete copy of the source
 tree. This allows for lightning-fast commits, because a commit is simply
 dumping metadata to the filesystem. In order to share code and merge data,
@@ -363,34 +350,27 @@ with his own changes. In addition, Git automatically maintains a commit
 history so we know what changed, who did it, and when. Thus, we can easily
 roll back changes that we made if we find that bugs were introduced.
 
-To actually write our code, we all used Vim. This happened quite
-organically actually. We all happened to be fairly competent Vim users
-and found that we did not need the features offered by heavier weight
-IDEs such as Eclipse. Since SML isn't well-supported by most IDEs,
-it is questionable how much help they could have offered.
+To actually write our code, we all used Vim. We all happened to be fairly
+competent Vim users and found that we did not need the features offered
+by heavier weight IDEs such as Eclipse. Since SML isn't well-supported
+by most IDEs, it is questionable how much help they could have offered.
 
 When working on the initial phases of the compiler, we wanted a toolkit
 that would abstract away the tedium of hand-rolling our own parser and
 lexer. Fortunately, SML has the MLlex and MLyacc libraries, which much
-like their C namesake, provide easy to use lexing and parsing facilities
+like their C namesake, provide easy-to-use lexing and parsing facilities
 specifically for SML. The structure of the files is so similar to the
 standard lex and yacc that it is fairly easy to learn one format given
 the other.
 
-Probably the last tool we used which is worth noting is Etherpad,
-a distributed plaintext document editing framework. It allows several
-users to work on the same document simultaneously by highlighting the
-changes each user makes in separate colors. This allows changes to be
-carefully tracked and managed by the group. It greatly simplified our
-documentation writing process, especially given the distributed nature
-of the final report and the various sections it required.
-
-As we have shown, an expansive project requires a variety of tools. Tools
-are not only needed to work on the project itself, but also to manage
-to project as it grows. The selection of tools has a profound impact on
-the quality and quantity of work produced, and we hope to show that we
-made wise decisions in our tool chain such that our compiler is improved,
-and not detracted from, by them.
+Probably the last tool we used which is worth noting is Etherpad, which
+we used to write this document. It is a distributed plaintext document
+editing framework. It allows several users to work on the same document
+simultaneously by highlighting the changes each user makes in separate
+colors. This allows changes to be carefully tracked and managed by
+the group. It greatly simplified our documentation writing process,
+especially given the distributed nature of the final report and the
+various sections it required.
 
 ## Test Plan and Test Suites
 Testing is an integral phase of any software project. Many projects
@@ -400,26 +380,19 @@ failed to adequately test the components individually early on. The end
 result is a pile of half-working code that is so convoluted it is nearly
 impossible to debug (or at least, to do so without losing one's sanity).
 
-To allow for immediate testing, the compiler can be run in  a debug mode,
+To allow for immediate testing, the compiler can be run in a debug mode,
 which causes the current internal representation of the Tiger program
 to be output after each phase of the compiler completes its respective
 tasks. This allows the tester to verify that the compiler is performing
 as desired and the proper transformations are being performed on the
 internal representations. To implement our debugging mode, we wrote a
-small s expression pretty printer. S-expressions are the core unit of
+small S-expression pretty printer. S-expressions are the core unit of
 syntax in the Lisp family of languages, and are simple to generate since
-they mirror the hierarchical nature of the syntax tree. In addition, they
-are nest naturally and much more readable than other more syntactically
-bloated human readable formats. However, this simple debugging mechanism
-is ineffective for testing a large variety of repetitive cases because
-it relies on a human operator to manually examine the output after every
-run. In order to do that, we need a more powerful test harness--one
-that allows the computer to automatically verify correctness, since it
-operates order of magnitudes more efficiently and does not make mistakes.
+they mirror the hierarchical nature of the syntax tree.
 
 Our core testing strategy consists of three separate test suites. They
 each are designed to validate different aspects of the compiler with
-each phase being slightly more comprehensive than the previous. The
+each suite being slightly more comprehensive than the previous. The
 first test suite consists of a large collection of small, single line
 programs that embody the basic features of the language. The test cases
 in this suite are designed to exhaustively test the lexical, syntactic,
@@ -463,7 +436,7 @@ and understanding a complex train of thought on a complicated topic that
 someone else is trying to explain is not easy, but is a valuable skill
 to possess.
 
-In addition, I have learned a new language, SML, as well as a deep
+In addition, I have learned a new language, SML, as well as gained a deep
 appreciation of the power and joy of functional programming. Learning
 a new programming paradigm involves becoming familiar with an entirely
 new way of thinking about computation and problem solving, as well as
@@ -471,7 +444,7 @@ new terms and concepts. I have also learned how to use Git and will
 likely begin to use it for my own projects. The process of designing and
 implementing a compiler has given me a better understanding of programming
 languages in general and how their features affect their implementation. A
-compiler has alway been sort of a black box to me, but now that mystery
+compiler has always been sort of a black box to me, but now that mystery
 is gone. This project has helped me grow as a programmer and has been
 an excellent intellectual exercise. The people in my group have also
 taught me numerous small things throughout the semester.
@@ -521,7 +494,7 @@ if I want to have to do this again for awhile...
 ### Group
 We've tried various approaches to organizing a group, and are convinced
 that working together, in person, is a huge productivity win. It's really
-hard maintain good communication using email and short meetings. Still,
+hard to maintain good communication using email and short meetings. Still,
 being productive as a group is not always easy. One of the advantages
 of being together as a group is that it's really easy to stop someone
 to discuss an issue, but it's possible to overdo this. It takes some
