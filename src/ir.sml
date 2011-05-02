@@ -24,7 +24,7 @@ structure IR = struct
  end
 
  datatype exp
-  = ARR of {size:texp, init:texp} (* ADDED arr:sym *)
+  = ARR of {size:texp, init:texp option}
   | ASSIGN of {var:var, exp:texp}
   | BREAK
   | CALL of {func:sym, args:texp list ref}
@@ -33,13 +33,13 @@ structure IR = struct
   | INT of int
   | NIL
   | OP of {left:texp, oper:oper, right:texp}
-  | REC of (sym * texp) list
+  | REC of (sym * texp) list option
   | SEQ of texp list
   | STR of string
   | VAR of var
   | WHILE of {test:texp, body:texp}
  and oper = ADD | SUB | MUL | DIV | EQ | NEQ | LT | LE | GT | GE | AND | OR
- and var = SIMPLE of sym | FIELD of var * sym | INDEX of var * exp
+ and var = SIMPLE of sym | FIELD of var * sym | INDEX of var * texp
  withtype texp = {e:exp, ty:Type.ty}
 
  (*
