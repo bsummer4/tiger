@@ -165,7 +165,7 @@ fun transform (program:program,blockname:S.symbol):program =
      val vars' = ST.unionWith (fn _=>fuck()) (newvars,pvars)
      val blocks' = ST.insert(blocks,blockname,block')
  in {main=main,blocks=blocks',procs=procs,arrays=arrays,records=records,vars=vars'}
- end 
+ end
 
 (*
 while (bad) do exp
