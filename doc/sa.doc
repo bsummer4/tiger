@@ -1,0 +1,36 @@
+# Type Definitions
+## Logic
+.1. Build a symbol table from definitions list.
+	- Duplicate name check
+
+.2. Check for invalid recursion
+	- Loop over all definitions, starting with an empty `seen' set.
+	- If we've seen it: type loop
+	- If not a local def, return the global type
+	- Look at body
+	- If alias: recurse, insert, and return the result of the
+	  recursion.
+        - If array: build, recurse, insert and return the ARR type
+		- Note that we ignore the result of the recursion, we
+		  only do it so that an exception will be thrown in the
+		  case of type loops.
+	- If record: build, insert and return the REC type
+
+.3. Second construction pass
+	- if alias ignore
+	- construct element types
+
+## Some example
+- Simple
+	| type x -> y
+	| type y -> array of x | ARR y'
+
+- Recursion
+	| type z = x
+	| type x = {y:y}
+	| type y = array of z
+
+- Invalid Recursion
+	| type x = y
+	| type y = z
+	| type z = y

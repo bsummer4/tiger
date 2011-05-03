@@ -32,11 +32,14 @@ structure Semantic = struct
   structure A = AST
   structure I = IR
   structure T = IR.Type
+  structure S = Symbol
 
-  type sym = Symbol.symbol
+  type sym = S.symbol
   structure ST = SymTable
   type sm = sym ST.map
   exception TypeError
+  exception TypeLoop
+  exception DuplicateTypes
 
   structure State = struct
    type scope = { ty:T.ty ST.map, var:sym ST.map }
@@ -45,13 +48,13 @@ structure Semantic = struct
    type state = blockState * scope * I.program
 
    fun mkBlock s p =
-    { name=Symbol.gensym s, parent=p, vars=[], subBlocks=[] } : blockState
+    { name=S.gensym s, parent=p, vars=[], subBlocks=[] } : blockState
 
    val emptyScope =
     {ty=ST.empty,var=ST.empty} : scope
 
    val emptyProgram =
-    { main=Symbol.empty, blocks=ST.empty, arrays=ST.empty, records=ST.empty
+    { main=S.empty, blocks=ST.empty, arrays=ST.empty, records=ST.empty
     , vars=ST.empty, procs=ST.empty } : I.program
   end
 
@@ -94,7 +97,7 @@ structure Semantic = struct
        ST.lookup(#arrays p,r)
     | elementType _ _ = raise TypeError
   fun fieldType (_,_,p:I.program)(T.REC r) n =
-       lookup r (ST.lookup(#records p,r))
+       ST.lookup (ST.lookup(#records p,r),r)
     | fieldType _ _ _ = raise TypeError
 
 (*
@@ -113,12 +116,12 @@ fromAlist :: (sym * 'a) list -> 'a ST.map
   fun fromAlist l = foldl (fn((k,v),t)=>ST.insert(t,k,v)) ST.empty l
   fun STcombine t t' = ST.mapi (fn (k,v) => (v,ST.lookup(t',k))) t
 
-  fun newVar (st:s as (bs,{ty,var},pgm)) v = 
-   let val unq = Symbol.gensym v
+  fun newVar (st:s as (bs,{ty,var},pgm)) v =
+   let val unq = S.gensym v
        val st  = bindVal st v unq
    in (unq,st)
    end
-  
+
   (* cvt :: s*A.exp -> s*I.exp *)
   fun cvt (state:s as (blocks,scope,program), exp) =
    let
@@ -127,7 +130,7 @@ fromAlist :: (sym * 'a) list -> 'a ST.map
 
     fun rec' {fields,typ,pos} =
      let val rty = case getType typ of T.REC r => r | _ => raise TypeError
-         val etys = fromAlist (ST.lookup(#records program,rty))
+         val etys = ST.lookup(#records program,rty)
          val (state',exps) = (smap
                               (fn (s,(n,e,p)) =>
                                (case cvt(s,e)of(s',e')=>(s',(n,e'))))
@@ -159,6 +162,61 @@ fromAlist :: (sym * 'a) list -> 'a ST.map
          ; (s,{ty=T.INT,e=I.OP{oper=irop op',left=l',right=r'}})
          )
       | _ => raise Match
+
+     (* mkTDefs :: sym -> {defs:ty ST, seen:unit ST} -> ty * ty ST *)
+     fun mkTDefs dm n {defs,seen} =
+      case (ST.find(seen,n),ST.find(dm,n))
+       of (NONE,_) => raise TypeLoop
+        | (_,NONE) => (getType n,defs)
+        | (_,SOME(A.NAME_TY (n',_))) =>
+           (case mkTDefs dm n' {seen=ST.insert(seen,n,()),defs=defs}
+             of (ty,defs') => (ty,ST.insert(defs',n,ty)))
+        | (_,SOME(A.REC_TY _)) =>
+           (case T.REC(S.gensym n) of x => (x,ST.insert(defs,n,x)))
+        | (_,SOME(A.ARRAY_TY (n',_))) =>
+           (case ( T.ARR(S.gensym n)
+                 , mkTDefs dm n' {seen=ST.insert(seen,n,()),defs=defs})
+             of (ty,(_,defs')) => (ty,ST.insert(defs',n,ty)))
+
+     (* TODO use functional record update *)
+     (* tdec :: state * {name:sym,ty:ty,pos:int} list -> state * exp option *)
+     fun tdec (s:s as (bs,{ty=tyscope,var=varscope},program),dl) =
+      let fun safeInsert ({name,ty,pos},t) =
+           if ST.inDomain(t,name) then raise DuplicateTypes
+                                  else ST.insert(t,name,ty)
+          val dm = foldl safeInsert ST.empty dl
+          val defs = ST.foldli
+           (fn (n,ty,a) => #2(mkTDefs dm n {defs=a,seen=ST.empty}))
+           ST.empty dm
+          val tyscope' = ST.unionWith (fn(a,_)=>a) (defs,tyscope)
+          fun mkRecTy fl =
+           fromAlist (map (fn {name,typ,pos} =>
+                           (name,ST.lookup(tyscope',typ))) fl)
+
+          (* wtf *)
+          fun mkType n (p:I.program as {main=m,blocks=b,procs,arrays=a,records=r,vars=v})=
+           case (ST.lookup(dm,n),ST.lookup(defs,n))
+            of (A.NAME_TY _,_) => p
+             | (A.REC_TY fl,T.REC tn) =>
+                {records=ST.insert(r,tn,mkRecTy fl),
+                 main=m,blocks=b,procs=procs,arrays=a,vars=v}
+             | (A.ARRAY_TY(et,_),T.ARR tn) =>
+                {arrays=ST.insert(a,tn,ST.lookup(tyscope',et)),
+                 main=m,blocks=b,procs=procs,records=r,vars=v}
+             | (A.REC_TY _,_) => ohwell()
+             | (A.ARRAY_TY _,_) => ohwell()
+          val p' = ST.foldli (fn(k,v,a)=>mkType k a) program defs
+
+      in ((bs,{ty=tyscope',var=varscope},p'),NONE)
+      end
+
+   fun vdec (state,n,t,i) =
+    let val (s,i') = cvt (state,i)
+        val (u,s') = newVar s n
+    in (case t of SOME (t,_) => assertTy (getType t) (#ty i')
+                | NONE       => ());
+       (s',SOME{e=I.ASSIGN{var=I.SIMPLE u,exp=i'},ty=T.UNIT})
+    end
 
     fun seq es =
      case smap cvt state es
@@ -207,7 +265,7 @@ fromAlist :: (sym * 'a) list -> 'a ST.map
            assertTy (#ty th) (#ty e);
            (s,{e=I.IFELSE{test=t,then'=th,else'=e},ty=(#ty e)})
         end
-   
+
    fun while' (test,body) =
     let val (s,l) = smap cvt state [test,body]
         val (t,b) = (hd l,last l)
@@ -223,7 +281,6 @@ fromAlist :: (sym * 'a) list -> 'a ST.map
         val (uv,s) = newVar s' v
         val iv = I.SIMPLE uv
         val ((bs,_,pgm),b) = cvt(s,body)
-
         val assn = {e=I.ASSIGN{var=iv,exp=hd l},ty=T.UNIT}
         val left = {e=I.VAR iv,ty=T.INT}
         val test = {e=I.OP{left=left,right=(last l),oper=I.LT},ty=T.INT}
@@ -235,21 +292,13 @@ fromAlist :: (sym * 'a) list -> 'a ST.map
        assertTy T.UNIT (#ty b);
        ((bs,scp,pgm),{e=I.SEQ[assn,whl],ty=T.UNIT})
     end
-  
-   fun vdec (state,n,t,i) =
-    let val (s,i') = cvt (state,i)
-        val (u,s') = newVar s n
-    in (case t of SOME (t,_) => assertTy (getType t) (#ty i')
-                | NONE       => ());
-       (s',SOME{e=I.ASSIGN{var=I.SIMPLE u,exp=i'},ty=T.UNIT})
-    end
 
    fun let' (decs,body) =
     let fun r (st,dec) =
          case dec
           of A.VAR_DEC {name,typ,init,...} => vdec (st,name,typ,init)
-           | A.TYPE_DEC l  => (*tdec (st,l)*) TODO()
-           | A.FUN_DEC l  => (*fdec (st,l)*) TODO()
+           | A.TYPE_DEC l => tdec (st,l)
+           | A.FUN_DEC l => (*fdec (st,l)*) TODO()
         val (_,scp,_) = state
         val (s,l) = smap r state decs
     in ()

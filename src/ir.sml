@@ -12,7 +12,7 @@ structure IR = struct
    = NIL | INT | STR | UNIT | REC of sym | ARR of sym | FUN of sym
 
   type arrays = ty ST.map
-  type records = (sym * ty) list ST.map
+  type records = ty ST.map ST.map
   type procs = {res:ty,args:ty list} ST.map
 
   fun compatible (a,b) =
