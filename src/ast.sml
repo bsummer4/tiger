@@ -8,6 +8,7 @@ structure AST = struct
  datatype oper
   = ADD | SUB | MUL | DIV | AND | OR | EQ | NEQ | LT | LE | GT | GE
 
+ type field = {name:sym, typ:sym, pos:pos}
  datatype exp
   = VAR of var
   | NIL
@@ -36,9 +37,8 @@ structure AST = struct
   | FUN_DEC of fundec list
 
  and ty = NAME_TY of sym*pos | REC_TY of field list | ARRAY_TY of sym*pos
- withtype field = {name:sym, typ:sym, pos:pos}
- and fundec = { name:sym, args:field list, result:(sym*pos)option
-              , body:exp, pos:pos }
+ withtype fundec = { name:sym, args:field list, result:(sym*pos)option
+                   , body:exp, pos:pos }
 end
 
 structure ASTSexp = struct

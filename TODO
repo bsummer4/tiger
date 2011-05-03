@@ -1,6 +1,6 @@
 :TODO: Issue with SML/NJ modules:
-	When the parser.sml driver is in a different module from the parser code
-   we get errors in SML/NJ:
+	When the parser.sml driver is in a different module from the
+	parser code we get errors in SML/NJ:
 
 	| parser.sml:2.2-2.15 Error: unbound structure: LrParser
 

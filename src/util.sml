@@ -35,7 +35,8 @@ structure Util = struct
  (* This lets us compare objects by identity instead of by value. *)
  type unique = unit ref
 
- fun last [] = raise Match
+ exception YourMom
+ fun last [] = raise YourMom
    | last (x::[]) = x
    | last (x::xs) = last xs
 
@@ -43,4 +44,6 @@ structure Util = struct
 
  fun inc (num : int ref) = num := !num + 1
  fun dec (num : int ref) = num := !num - 1
+
+ fun id x = x
 end

@@ -81,8 +81,9 @@ structure Semantic = struct
 
   (* smap :: (s*'a -> s*'b) -> s -> 'a list -> (s,'b list) *)
   (* Accumulate a new state while mapping over a list *)
+  (* TODO use fold? *)
   fun smap f (s:s) al =
-   let fun r acc [] = acc
+   let fun r (a,b) [] = (a,rev b)
          | r (s,x'l) (x::xs) =
             case f (s,x) of (s',x') =>
              r (s',x'::x'l) xs
@@ -107,10 +108,12 @@ structure Semantic = struct
   fun fromAlist l = foldl (fn((k,v),t)=>ST.insert(t,k,v)) ST.empty l
   fun STcombine t t' = ST.mapi (fn (k,v) => (v,ST.lookup(t',k))) t
 
-  fun newVar (st:s as (bs,{ty,var},pgm)) v : sym*s =
+  fun newVar (st:s as (bs,{ty,var},pgm)) (v,typ:T.ty) : sym*s =
    let val unq = S.gensym v
-       val st  = bindVal st v unq
-   in (unq,st)
+       val pgm' = pgmWithVars pgm
+                   (ST.insert (#vars pgm, unq, {typ=typ,block=(#name bs),ref'=false} ))
+       val st' = bindVal (bs,{ty=ty,var=var},pgm') v unq
+   in (unq,st')
    end
 
   (* setup state for convert *)
@@ -250,7 +253,7 @@ structure Semantic = struct
 
     fun vdec (state,n,t,i) =
      let val (s,i') = cvt (state,i)
-         val (u,s') = newVar s n
+         val (u,s') = newVar s (n,#ty i')
      in (case t of SOME (t,_) => assertTy (getType t) (#ty i')
                  | NONE       => ());
         (s',SOME{e=I.ASSIGN{var=I.SIMPLE u,exp=i'},ty=T.UNIT})
@@ -263,7 +266,7 @@ structure Semantic = struct
                     (s,{ty=ty,e=I.SEQ el})
 
     fun varExp v = case var v of (s,ty,v') => (s,{ty=ty,e=I.VAR v'})
-    and var (A.SIMPLE(n,_)) = let val n' = getVar n
+    and var (A.SIMPLE(n,_)) = let val n' = (case getVar n of x => (print "sup\n";x))
                                   val ty = #typ(ST.lookup(#vars program,n'))
                               in (state,ty,I.SIMPLE n') end
       | var (A.FIELD(v,n,_)) = let val (s,rty,v') = var v
@@ -290,8 +293,7 @@ structure Semantic = struct
      end
 
     fun if' (test,then',NONE) =
-         let val (s,l) = smap cvt state [test,then']
-             val (t,th) = (hd l, last l)
+         let val (s,(t,th)) = (case smap cvt state [test,then'] of (s,[a,b])=>(s,(a,b)) | _ => fuck())
          in assertTy T.INT (#ty t);
             assertTy T.UNIT (#ty th);
             (s,{e=I.IF{test=t,then'=th},ty=T.UNIT})
@@ -316,7 +318,7 @@ structure Semantic = struct
     fun for (v,lo,hi,body) =
      let val scp = (#2 state)
          val (s',l) = smap cvt state [lo,hi]
-         val (uv,s) = newVar s' v
+         val (uv,s) = newVar s' (v,T.INT)
          val iv = I.SIMPLE uv
          val ((bs,_,pgm),b) = cvt(s,body)
          val assn = {e=I.ASSIGN{var=iv,exp=hd l},ty=T.UNIT}
@@ -336,10 +338,12 @@ structure Semantic = struct
           case dec
            of A.VAR_DEC {name,typ,init,...} => vdec (st,name,typ,init)
             | A.TYPE_DEC l => tdec (st,l)
-            | A.FUN_DEC l => (*fdec (st,l)*) TODO()
+            | A.FUN_DEC l => fdec (st,l)
          val (_,scp,_) = state
-         val (s,l) = smap r state decs
-     in ()
+         val (s,assignOpts) = smap r state decs
+         val assign = List.mapPartial id assignOpts
+         val (s',body' as {e,ty}) = cvt(s,body)
+     in (s',{e=I.SEQ (List.concat [assign,[body']]),ty=ty})
      end
 
    in case exp
@@ -357,7 +361,40 @@ structure Semantic = struct
         | A.IF {test,then',else',pos} => if'(test,then',else')
         | A.WHILE {test,body,pos} => while'(test,body)
         | A.FOR {var,lo,hi,body,pos} => for (var,lo,hi,body)
-        | A.LET {decs,body,pos} => TODO()
+        | A.LET {decs,body,pos} => let' (decs,body)
    end
  end
+
+ local
+  open Symbol
+ in
+  val stdTypes = [ (mk "int",T.INT), (mk "string",T.STR) ]
+  val stdLib   = [ (mk "print"    ,{res=T.UNIT,args=[T.STR]})
+                 , (mk "printi"   ,{res=T.UNIT,args=[T.INT]})
+                 , (mk "flush"    ,{res=T.UNIT,args=[T.UNIT]})
+                 , (mk "getchar"  ,{res=T.STR ,args=[T.UNIT]})
+                 , (mk "ord"      ,{res=T.INT ,args=[T.STR]})
+                 , (mk "chr"      ,{res=T.STR ,args=[T.INT]})
+                 , (mk "size"     ,{res=T.INT ,args=[T.STR]})
+                 , (mk "substring",{res=T.STR ,args=[T.STR,T.INT,T.INT]})
+                 , (mk "concat"   ,{res=T.STR ,args=[T.STR,T.STR]})
+                 , (mk "not"      ,{res=T.INT ,args=[T.INT]})
+                 , (mk "exit"     ,{res=T.UNIT,args=[T.INT]})
+                 ]
+  val stdScope : State.scope = {ty=fromAlist stdTypes,var=fromAlist (map(fn(a,b)=>(a,a)) stdLib)}
+  val stdProgram : I.program = pgmWithProcs State.emptyProgram (fromAlist stdLib)
+ end
+
+ (* create basic state, bind stdlib *)
+ (* toIR :: A.exp -> I.program *)
+ fun toIR e : I.program =
+  let val bs  = {name=S.mk "TopLevel",vars=[]}
+      val scp = stdScope
+      val pgm = stdProgram
+      val ((bs',_,pgm'),body) = cvt((bs,scp,pgm),e)
+      val pgm'' = pgmWithBlocks pgm'
+                   (ST.insert( #blocks pgm', #name bs'
+                             , {args=[],vars=(#vars bs'),body=body} ))
+  in pgmWithMain pgm'' (S.mk "TopLevel")
+  end
 end

@@ -70,10 +70,9 @@ end
 
 structure IRSexp = struct
  local
+  open IR Util
   structure S = Sexp
-  open IR
   structure T = Type
-  structure U = Util
   val name = Symbol.unique
   fun sym s = s
   val fix = S.SYM o name
@@ -117,6 +116,8 @@ structure IRSexp = struct
     | T.NIL => sexp "type" [S.SYM "NIL"]
     | T.REC s => sexp "type" [S.SYM "record", fix s]
     | T.ARR s => sexp "type" [S.SYM "array", fix s]
+    | T.UNIT => sexp "type" [S.SYM "UNIT"]
+    | T.FUN _ => TODO()
 
   and texpSexp (te as {e,ty}) = sexp "texp" [typSexp ty, expSexp e]
 
@@ -139,10 +140,6 @@ structure IRSexp = struct
   and varSexp' (s, (v as {typ,block:Symbol.symbol,ref'})) =
    sexp (name s) [typSexp typ, fix block, S.BOOL ref']
 
-
-  val x = {ty=T.INT,e=OP{oper=ADD,left={ty=T.INT, e=STR "3"}, right={ty=T.INT,e=INT 4}}}
-  val () = S.printSexp(texpSexp x);
-
  in
   fun programSexp (p:program as {main,blocks,procs,arrays,records,vars}) =
    sexp "program" [fix main
@@ -156,15 +153,15 @@ structure IRSexp = struct
  end
 end
 
-fun pgmWithMain {main=m,blocks=b,procs=p,arrays=a,records=r,vars=v} m' = 
+fun pgmWithMain {main=m,blocks=b,procs=p,arrays=a,records=r,vars=v} m' =
  {main=m',blocks=b,procs=p,arrays=a,records=r,vars=v}
-fun pgmWithBlocks {main=m,blocks=b,procs=p,arrays=a,records=r,vars=v} b' = 
+fun pgmWithBlocks {main=m,blocks=b,procs=p,arrays=a,records=r,vars=v} b' =
  {main=m,blocks=b',procs=p,arrays=a,records=r,vars=v}
-fun pgmWithProcs {main=m,blocks=b,procs=p,arrays=a,records=r,vars=v} p' = 
+fun pgmWithProcs {main=m,blocks=b,procs=p,arrays=a,records=r,vars=v} p' =
  {main=m,blocks=b,procs=p',arrays=a,records=r,vars=v}
-fun pgmWithArrays {main=m,blocks=b,procs=p,arrays=a,records=r,vars=v} a' = 
+fun pgmWithArrays {main=m,blocks=b,procs=p,arrays=a,records=r,vars=v} a' =
  {main=m,blocks=b,procs=p,arrays=a',records=r,vars=v}
-fun pgmWithRecords {main=m,blocks=b,procs=p,arrays=a,records=r,vars=v} r' = 
+fun pgmWithRecords {main=m,blocks=b,procs=p,arrays=a,records=r,vars=v} r' =
  {main=m,blocks=b,procs=p,arrays=a,records=r',vars=v}
-fun pgmWithVars {main=m,blocks=b,procs=p,arrays=a,records=r,vars=v} v' = 
+fun pgmWithVars {main=m,blocks=b,procs=p,arrays=a,records=r,vars=v} v' =
  {main=m,blocks=b,procs=p,arrays=a,records=r,vars=v'}
