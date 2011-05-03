@@ -43,12 +43,11 @@ structure Semantic = struct
 
   structure State = struct
    type scope = { ty:T.ty ST.map, var:sym ST.map }
-   type blockState = { name:sym, parent:sym option, vars:sym list
-                     , subBlocks:sym list }
+   type blockState = { name:sym,  vars:sym list }
    type state = blockState * scope * I.program
 
    fun mkBlock s p =
-    { name=S.gensym s, parent=p, vars=[], subBlocks=[] } : blockState
+    { name=S.gensym s, vars=[] } : blockState
 
    val emptyScope =
     {ty=ST.empty,var=ST.empty} : scope
