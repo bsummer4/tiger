@@ -156,9 +156,9 @@ fun fromAlist l = foldl (fn((k,v),t)=>ST.insert(t,k,v)) ST.empty l
 fun transform (program:program,blockname:S.symbol):program =
  let val vl = ref ([]:(S.symbol*T.ty)list)
      val {main,blocks,procs,arrays,records,vars=pvars} = program
-     val {body,vars,args,subBlocks,up} = ST.lookup(#blocks program, blockname)
+     val {body,vars,args} = ST.lookup(#blocks program, blockname)
      val body' = fix vl program body
-     val block' = {body=body',vars=List.concat[map #1 (!vl),vars],args=args,subBlocks=subBlocks,up=up}
+     val block' = {body=body',vars=List.concat[map #1 (!vl),vars],args=args}
      val newvars =
       fromAlist (map (fn(n,ty)=>(n,{typ=ty,block=blockname,ref'=false}))
                  (!vl))

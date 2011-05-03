@@ -52,8 +52,6 @@ structure IR = struct
  type block
   = { args:sym list
     , vars:sym list
-    , subBlocks:sym list
-    , up:sym option
     , body:texp
     }
 
@@ -122,12 +120,10 @@ structure IRSexp = struct
 
   and texpSexp (te as {e,ty}) = sexp "texp" [typSexp ty, expSexp e]
 
-  and blockSexp (s,(b as {args,vars,subBlocks,up,body})) =
+  and blockSexp (s,(b as {args,vars,body})) =
    sexp "block" [ fix s
                 , sexp "args" (map fix args)
                 , sexp "vars" (map fix vars)
-                , sexp "subBlocks" (map fix subBlocks)
-                , sexp "up" (case up of SOME up' => [fix up'] | NONE => [] )
                 , sexp "body" [texpSexp body]
                 ]
 
@@ -159,3 +155,16 @@ structure IRSexp = struct
 
  end
 end
+
+fun pgmWithMain {main=m,blocks=b,procs=p,arrays=a,records=r,vars=v} m' = 
+ {main=m',blocks=b,procs=p,arrays=a,records=r,vars=v}
+fun pgmWithBlocks {main=m,blocks=b,procs=p,arrays=a,records=r,vars=v} b' = 
+ {main=m,blocks=b',procs=p,arrays=a,records=r,vars=v}
+fun pgmWithProcs {main=m,blocks=b,procs=p,arrays=a,records=r,vars=v} p' = 
+ {main=m,blocks=b,procs=p',arrays=a,records=r,vars=v}
+fun pgmWithArrays {main=m,blocks=b,procs=p,arrays=a,records=r,vars=v} a' = 
+ {main=m,blocks=b,procs=p,arrays=a',records=r,vars=v}
+fun pgmWithRecords {main=m,blocks=b,procs=p,arrays=a,records=r,vars=v} r' = 
+ {main=m,blocks=b,procs=p,arrays=a,records=r',vars=v}
+fun pgmWithVars {main=m,blocks=b,procs=p,arrays=a,records=r,vars=v} v' = 
+ {main=m,blocks=b,procs=p,arrays=a,records=r,vars=v'}
