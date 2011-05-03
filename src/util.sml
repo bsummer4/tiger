@@ -9,6 +9,12 @@ structure Util = struct
   let fun r sofar i = if i<0 then sofar else r (i::sofar) (i-1)
   in r [] (n-1) end
 
+ exception NotFound
+ fun lookup k l =
+  case List.find (fn(a,b) => a=k) l
+   of NONE => raise NotFound
+    | SOME (k,v) => v
+
  (* Is 'e' a member of 'l'? *)
  fun mem e l = case List.find (fn x=>x=e) l of NONE=>false | _=>true
 

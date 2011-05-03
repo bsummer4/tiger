@@ -89,9 +89,11 @@ structure Semantic = struct
    in r (s,[]) al
    end
 
-  fun elementType (_,_,program) (T.ARR r) = TODO()
+  fun elementType (_,_,p:I.program) (T.ARR r) =
+       ST.lookup(#arrays p,r)
     | elementType _ _ = raise TypeError
-  fun fieldType (_,_,program) (T.REC r) n = TODO()
+  fun fieldType (_,_,p:I.program)(T.REC r) n =
+       lookup r (ST.lookup(#records p,r))
     | fieldType _ _ _ = raise TypeError
 
 (*
