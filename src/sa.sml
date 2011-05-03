@@ -150,24 +150,23 @@ structure Semantic = struct
       | (s,el) => case last el of {ty,e} =>
          (s,{ty=ty,e=I.SEQ el})
 
-    fun var (A.SIMPLE(n,_)) =
-         let val n' = getVar n
-             val ty = #typ(ST.lookup(#vars program,n'))
-         in (state,ty,I.SIMPLE n')
-         end
-      | var (A.FIELD(v,n,_)) =
-         let val (s,rty,v') = var v
-             val fty = (fieldType s rty n)
-         in (s,fty,I.FIELD(v',n))
-         end
-      | var (A.INDEX(v,i,_)) =
-         let val (s,aty,v') = var v
-             val (s',i') = cvt (s,i)
-             val ety = (elementType s' aty)
-         in (s',ety,I.INDEX(v',i'))
-         end
-
     fun varExp v = case var v of (s,ty,v') => (s,{ty=ty,e=I.VAR v'})
+    and var (A.SIMPLE(n,_)) = let val n' = getVar n
+                                  val ty = #typ(ST.lookup(#vars program,n'))
+                              in (state,ty,I.SIMPLE n') end
+      | var (A.FIELD(v,n,_)) = let val (s,rty,v') = var v
+                                   val fty = (fieldType s rty n)
+                               in (s,fty,I.FIELD(v',n)) end
+      | var (A.INDEX(v,i,_)) = let val (s,aty,v') = var v
+                                   val (s',i') = cvt (s,i)
+                                   val ety = (elementType s' aty)
+                               in (s',ety,I.INDEX(v',i')) end
+
+    fun assign (v,e) =
+     (case var v of (s,vty,v') =>
+      (case cvt (s,e) of (s',e' as {ty=ety,e=ee}) =>
+       ((assertTy vty ety);
+        (s',{ty=T.UNIT,e=I.ASSIGN{var=v',exp=e'}}))))
 
    in case exp
        of A.NIL => (state,{ty=T.NIL,e=I.NIL})
@@ -179,8 +178,8 @@ structure Semantic = struct
         | A.ARRAY a => arr a
         | A.OP {left,oper,right,pos} => op' (oper,left,right)
         | A.VAR v => varExp v
+        | A.ASSIGN {var,exp,pos} => assign(var,exp)
         | A.CALL {func,args,pos} => TODO()
-        | A.ASSIGN {var,exp,pos} => TODO()
         | A.IF {test,then',else',pos} => TODO()
         | A.WHILE {test,body,pos} => TODO()
         | A.FOR {var,lo,hi,body,pos} => TODO()
