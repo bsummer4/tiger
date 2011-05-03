@@ -56,8 +56,8 @@ structure Semantic = struct
   end
 
   (* Convenience Functions *)
-  fun bindType (b,{ty,var},p) name v = (b,{ty=ST.insert(ty,name,v),var=var},p)
-  fun bindVal (b,{ty,var},p) name v = (b,{ty=ty,var=ST.insert(var,name,v)},p)
+  fun bindType (b,{ty,var},p) name t = (b,{ty=ST.insert(ty,name,t),var=var},p)
+  fun bindVal (b,{ty,var},p) name u = (b,{ty=ty,var=ST.insert(var,name,u)},p)
   fun getType (_,{ty,var},_) sym = ST.lookup(ty,sym)
   fun getVar (_,{ty,var},_) sym = ST.lookup(var,sym)
   type s=State.state
@@ -80,7 +80,8 @@ structure Semantic = struct
     | assertTy' (t::ts) t' =
        if T.compatible(t,t') then () else assertTy' ts t'
 
-  (* smap :: (s*'a -> s*'b) -> s > 'a list *)
+  (* smap :: (s*'a -> s*'b) -> s -> 'a list -> (s,'b list) *)
+  (* Accumulate a new state while mapping over a list *)
   fun smap f (s:s) al =
    let fun r acc [] = acc
          | r (s,x'l) (x::xs) =
@@ -97,13 +98,27 @@ structure Semantic = struct
     | fieldType _ _ _ = raise TypeError
 
 (*
-	A couple of utillity functions for dealing with symbol->value
-	maps. In `STcombine' we assume that both tables have idential
-	sets of keys.
+ A couple of utillity functions for dealing with symbol->value maps. In
+ `STcombine' we assume that both tables have identical sets of keys.
+fromAlist :: (sym * 'a) list -> 'a ST.map
+ STcombine :: 'a ST.map -> 'b ST.map -> ('a * 'b) ST.map
+ newVar :: s -> sym -> (State.scope,s)
 *)
+
+(* type scope = { ty:T.ty ST.map, var:sym ST.map }
+   type blockState = { name:sym, parent:sym option, vars:sym list
+                     , subBlocks:sym list }
+   type state = blockState * scope * I.program *)
+
   fun fromAlist l = foldl (fn((k,v),t)=>ST.insert(t,k,v)) ST.empty l
   fun STcombine t t' = ST.mapi (fn (k,v) => (v,ST.lookup(t',k))) t
 
+  fun newVar (st:s as (bs,{ty,var},pgm)) v = 
+   let val unq = Symbol.gensym v
+       val st  = bindVal st v unq
+   in (unq,st)
+   end
+  
   (* cvt :: s*A.exp -> s*I.exp *)
   fun cvt (state:s as (blocks,scope,program), exp) =
    let
@@ -145,10 +160,11 @@ structure Semantic = struct
          )
       | _ => raise Match
 
-    fun seq es = case smap cvt state es
-     of (s,[]) => (s,{ty=T.UNIT,e=I.SEQ[]})
-      | (s,el) => case last el of {ty,e} =>
-         (s,{ty=ty,e=I.SEQ el})
+    fun seq es =
+     case smap cvt state es
+      of (s,[]) => (s,{ty=T.UNIT,e=I.SEQ[]})
+       | (s,el) => case last el of {ty,e} =>
+                    (s,{ty=ty,e=I.SEQ el})
 
     fun varExp v = case var v of (s,ty,v') => (s,{ty=ty,e=I.VAR v'})
     and var (A.SIMPLE(n,_)) = let val n' = getVar n
@@ -168,21 +184,92 @@ structure Semantic = struct
        ((assertTy vty ety);
         (s',{ty=T.UNIT,e=I.ASSIGN{var=v',exp=e'}}))))
 
+    fun call (f,e) =
+     let val f = getVar f
+         val proc  = ST.lookup(#procs program,f)
+         val (s,l) = (smap cvt state e)
+         fun cur f (a,b) = f a b
+     in ListPair.app (cur assertTy) (map #ty l,#args proc);
+        (s,{ty=(#res proc),e=I.CALL{func=f,args=ref l}})
+     end
+
+   fun if' (test,then',NONE) =
+        let val (s,l) = smap cvt state [test,then']
+            val (t,th) = (hd l, last l)
+        in assertTy T.INT (#ty t);
+           assertTy T.UNIT (#ty th);
+           (s,{e=I.IF{test=t,then'=th},ty=T.UNIT})
+        end
+     | if' (test,then',SOME else') =
+        let val (s,l) = smap cvt state [test,then',else']
+            val (t,th,e) = (hd l, hd (tl l), last l)
+        in assertTy T.INT (#ty t);
+           assertTy (#ty th) (#ty e);
+           (s,{e=I.IFELSE{test=t,then'=th,else'=e},ty=(#ty e)})
+        end
+   
+   fun while' (test,body) =
+    let val (s,l) = smap cvt state [test,body]
+        val (t,b) = (hd l,last l)
+    in assertTy T.INT  (#ty t);
+       assertTy T.UNIT (#ty b);
+       (s,{e=I.WHILE{test=t,body=b},ty=T.UNIT})
+    end
+
+   (* Evaluate loop bounds before binding loop variable *)
+   fun for (v,lo,hi,body) =
+    let val scp = (#2 state)
+        val (s',l) = smap cvt state [lo,hi]
+        val (uv,s) = newVar s' v
+        val iv = I.SIMPLE uv
+        val ((bs,_,pgm),b) = cvt(s,body)
+
+        val assn = {e=I.ASSIGN{var=iv,exp=hd l},ty=T.UNIT}
+        val left = {e=I.VAR iv,ty=T.INT}
+        val test = {e=I.OP{left=left,right=(last l),oper=I.LT},ty=T.INT}
+        val incr = { e=I.OP{left=left,right={e=I.INT 1,ty=T.INT},oper=I.ADD}
+                   , ty=T.INT}
+        val body = {e=I.SEQ[b,incr],ty=T.UNIT}
+        val whl  = {e=I.WHILE{test=test,body=body},ty=T.UNIT}
+    in app (assertTy T.INT) (map #ty l);
+       assertTy T.UNIT (#ty b);
+       ((bs,scp,pgm),{e=I.SEQ[assn,whl],ty=T.UNIT})
+    end
+  
+   fun vdec (state,n,t,i) =
+    let val (s,i') = cvt (state,i)
+        val (u,s') = newVar s n
+    in (case t of SOME (t,_) => assertTy (getType t) (#ty i')
+                | NONE       => ());
+       (s',SOME{e=I.ASSIGN{var=I.SIMPLE u,exp=i'},ty=T.UNIT})
+    end
+
+   fun let' (decs,body) =
+    let fun r (st,dec) =
+         case dec
+          of A.VAR_DEC {name,typ,init,...} => vdec (st,name,typ,init)
+           | A.TYPE_DEC l  => (*tdec (st,l)*) TODO()
+           | A.FUN_DEC l  => (*fdec (st,l)*) TODO()
+        val (_,scp,_) = state
+        val (s,l) = smap r state decs
+    in ()
+    end
+
    in case exp
        of A.NIL => (state,{ty=T.NIL,e=I.NIL})
         | A.BREAK _ => (state,{ty=T.UNIT,e=I.BREAK})
         | A.INT i => (state,{ty=T.INT,e=I.INT i})
-        | A.STR (str,p) => (state,{ty=T.STR,e=I.STR str})
+        | A.STR (str,_) => (state,{ty=T.STR,e=I.STR str})
         | A.SEQ es => seq (map #1 es)
         | A.REC r => rec' r
         | A.ARRAY a => arr a
         | A.OP {left,oper,right,pos} => op' (oper,left,right)
         | A.VAR v => varExp v
         | A.ASSIGN {var,exp,pos} => assign(var,exp)
-        | A.CALL {func,args,pos} => TODO()
-        | A.IF {test,then',else',pos} => TODO()
-        | A.WHILE {test,body,pos} => TODO()
-        | A.FOR {var,lo,hi,body,pos} => TODO()
+        | A.CALL {func,args,pos} => call(func,args)
+        | A.IF {test,then',else',pos} => if'(test,then',else')
+        | A.WHILE {test,body,pos} => while'(test,body)
+        | A.FOR {var,lo,hi,body,pos} => for (var,lo,hi,body)
         | A.LET {decs,body,pos} => TODO()
    end
  end

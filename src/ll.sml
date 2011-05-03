@@ -19,54 +19,51 @@ fun keys t = ST.foldli (fn(k,v,acc) => k::acc) [] t
 *)
 
 fun foldExp f acc exp =
-  let
-    fun hack f (a,b) = f a b
-    fun varr acc v =
-     case v
-      of SIMPLE _ => acc
-       | FIELD (v,_) => varr acc v
-       | INDEX (v,{ty,e}) => varr (expr acc e) v
-    and expr acc e =
-      case e
-      of (a as ARR {init=SOME i,size=s}) => f (f (f acc a) (#e s)) (#e i)
-       | (a as ARR {init=NONE,size=s}) => f (f acc a) (#e s)
-       | (a as ASSIGN {var=v,exp=e}) => varr (f (f acc a) (#e e)) v
-       | (b as BREAK) => f acc b
-       | (i as IF {test=t,then'=th}) => f (f (f acc i) (#e th)) (#e t)
-       | (i as IFELSE {test=t,then'=th,else'=e}) =>
-          f (f (f (f acc i) (#e e)) (#e th)) (#e t)
-       | (i as INT _) => f acc i
-       | (n as NIL) => f acc n
-       | (o' as OP {left=l,right=r,...}) => f (f (f acc o') (#e r)) (#e l)
-       | (s as STR _) => f acc s
-       | (v as VAR vd) => varr (f acc v) vd
-       | (w as WHILE {test=t,body=b}) => f (f (f acc w) (#e b)) (#e t)
-       | (s as SEQ l) => foldl (hack f) (f acc s) (map #e l)
-       | (r as REC (SOME t)) => ST.foldl (hack f) (f acc r) (ST.mapi (#e o #2) t)
-       | (r as REC NONE) => f acc r
-       | (c as CALL {args=a,...}) =>
-          foldl (hack f) (f acc c) ((map #e (!a)):IR.exp list)
-  in expr acc exp
-  end
+ let
+  fun hack f (a,b) = f b a
+  fun varr acc v =
+   case v
+    of SIMPLE _ => acc
+     | FIELD (v,_) => varr acc v
+     | INDEX (v,{ty,e}) => varr (expr acc e) v
+  and expr acc e =
+   case e
+    of (a as ARR {init=SOME i,size=s}) => f (f (f acc a) (#e s)) (#e i)
+     | (a as ARR {init=NONE,size=s}) => f (f acc a) (#e s)
+     | (a as ASSIGN {var=v,exp=e}) => varr (f (f acc a) (#e e)) v
+     | (b as BREAK) => f acc b
+     | (i as IF {test=t,then'=th}) => f (f (f acc i) (#e th)) (#e t)
+     | (i as IFELSE {test=t,then'=th,else'=e}) =>
+        f (f (f (f acc i) (#e e)) (#e th)) (#e t)
+     | (i as INT _) => f acc i
+     | (n as NIL) => f acc n
+     | (o' as OP {left=l,right=r,...}) => f (f (f acc o') (#e r)) (#e l)
+     | (s as STR _) => f acc s
+     | (v as VAR vd) => varr (f acc v) vd
+     | (w as WHILE {test=t,body=b}) => f (f (f acc w) (#e b)) (#e t)
+     | (s as SEQ l) => foldl (hack f) (f acc s) (map #e l)
+     | (r as REC (SOME t)) => ST.foldl (hack f) (f acc r) (ST.mapi (#e o #2) t)
+     | (r as REC NONE) => f acc r
+     | (c as CALL {args=a,...}) =>
+        foldl (hack f) (f acc c) ((map #e (!a)):IR.exp list)
+ in expr acc exp
+ end
 
 fun foldCalls f acc exp =
-  let
-    fun r f acc exp =
+ let fun r acc exp =
       case exp
-      of c as CALL _ => f acc c
-       | _ => acc
-  in r f acc exp
-  end
+       of c as CALL _ => f acc c
+        | _ => acc
+ in foldExp r acc exp
+ end
 
 fun foldVars f acc exp =
-  let
-    fun r f acc exp =
+ let fun r acc exp =
       case exp
       of VAR v => f acc v
        | _ => acc
-  in r f acc exp
-  end
-
+ in foldExp r acc exp
+ end
 
 (* get blocks *)
 fun getBlocks ({blocks,...}:program) =
