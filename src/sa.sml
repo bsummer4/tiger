@@ -46,9 +46,6 @@ structure Semantic = struct
    type blockState = { name:sym,  vars:sym list }
    type state = blockState * scope * I.program
 
-   fun mkBlock s p =
-    { name=S.gensym s, vars=[] } : blockState
-
    val emptyScope =
     {ty=ST.empty,var=ST.empty} : scope
 
@@ -110,19 +107,64 @@ structure Semantic = struct
   fun fromAlist l = foldl (fn((k,v),t)=>ST.insert(t,k,v)) ST.empty l
   fun STcombine t t' = ST.mapi (fn (k,v) => (v,ST.lookup(t',k))) t
 
-  fun newVar (st:s as (bs,{ty,var},pgm)) v =
+  fun newVar (st:s as (bs,{ty,var},pgm)) v : sym*s =
    let val unq = S.gensym v
        val st  = bindVal st v unq
    in (unq,st)
    end
 
+  (* setup state for convert *)
+  (* replace new scope with stashed scope *)
+  (* insert block into program, return new state *)
+  fun mkFun ({name,args,result,body,pos}:A.fundec,s:s as (bs,{ty=tyscope,var=varscope},pgm as {procs,vars,...})) : s =
+   let val realName = getVar s name
+       val realArgNames = map (S.gensym o #name) args
+       val realType = case result of SOME (ty,_) => getType s ty | NONE => T.UNIT
+       fun mkPgmVar (realName,arg:A.field,vars) =
+        ST.insert( vars, realName
+                , {block=realName,typ=getType s (#typ arg), ref'=false} )
+       val vars' = ListPair.foldl mkPgmVar vars (realArgNames,args)
 
+       val bsForBody = {name=realName,vars=[]}
+       fun bindVar (realName,arg:A.field,scp) = ST.insert(scp,#name arg,realName)
+       val varForBody = ListPair.foldl bindVar varscope (realArgNames,args)
+       val stateForBody = (bsForBody,{ty=tyscope,var=varForBody},pgmWithVars pgm vars')
 
-  (* cvt :: s*A.exp -> s*I.exp *)
-  fun cvt (state:s as (blocks,scope,program), exp) =
+       val ((bs',_,pgm'),l as {e,ty}) = cvt(stateForBody,body)
+       val pgm'' = pgmWithBlocks pgm'
+                    (ST.insert( #blocks pgm', realName
+                              , {args=realArgNames,vars=(#vars bs'),body=l} ))
+
+   in assertTy ty realType
+    ; (bs,{ty=tyscope,var=varscope},pgm'')
+   end
+
+  (* cvt :: s*A.exp -> s*I.texp *)
+  and cvt (state:s as (blocks,scope,program), exp:A.exp) : s*I.texp =
    let
 
     val (getType,getVar) = (getType state,getVar state)
+
+    (* type scope = { ty:T.ty ST.map, var:sym ST.map }
+       type blockState = { name:sym, vars:sym list }
+       type state = blockState * scope * I.program     *)
+
+    (* fold onto map of (sym * sym list) *)
+    (* create new blockstate with crap *)
+    (* change program to make new environment for crap *)
+    (* change scope to allow new variable bindings *)
+
+    fun fdec (s:s as (bs,{ty,var},pgm),dl) =
+     let fun mkBind ({name,args,...}:A.fundec,acc) = ST.insert(acc,name,S.gensym(name))
+         val var' = foldl mkBind var dl
+         fun mkProcs ({name,result,args,...}:A.fundec,acc) =
+          ST.insert(acc,ST.lookup(var',name),
+                   { res=(case result of SOME (t,_) => getType t | NONE => T.UNIT)
+                   , args=map (getType o #typ) args })
+         val pgm' = pgmWithProcs pgm (foldl mkProcs (#procs pgm) dl)
+         val s' = (bs,{ty=ty,var=var'},pgm')
+     in (foldl mkFun s' dl,NONE)
+     end
 
     fun rec' {fields,typ,pos} =
      let val rty = case getType typ of T.REC r => r | _ => raise TypeError

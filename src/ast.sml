@@ -33,12 +33,12 @@ structure AST = struct
  and dec
   = TYPE_DEC of {name:sym, ty:ty, pos:pos} list
   | VAR_DEC of {name:sym, typ:(sym*pos) option, init:exp, pos:pos}
-  | FUN_DEC of { name:sym, args:field list
-               , result:(sym*pos)option, body:exp, pos:pos
-               } list
+  | FUN_DEC of fundec list
 
  and ty = NAME_TY of sym*pos | REC_TY of field list | ARRAY_TY of sym*pos
  withtype field = {name:sym, typ:sym, pos:pos}
+ and fundec = { name:sym, args:field list, result:(sym*pos)option
+              , body:exp, pos:pos }
 end
 
 structure ASTSexp = struct
