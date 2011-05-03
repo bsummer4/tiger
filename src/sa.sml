@@ -113,14 +113,10 @@ fromAlist :: (sym * 'a) list -> 'a ST.map
 
   fun newVar (st:s as (bs,{ty,var},pgm)) v = 
    let val unq = Symbol.gensym v
-       val scp = {ty=ty,var=ST.insert(var,v,unq)}
        val st  = bindVal st v unq
-   in (scp,st)
+   in (unq,st)
    end
   
-  (* fun wrapVar s = I.SIMPLE s *)
-  fun texp e ty = {e=e,ty=ty}
-
   (* cvt :: s*A.exp -> s*I.exp *)
   fun cvt (state:s as (blocks,scope,program), exp) =
    let
@@ -195,33 +191,6 @@ fromAlist :: (sym * 'a) list -> 'a ST.map
      in ListPair.app (cur assertTy) (map #ty l,#args proc);
         (s,{ty=(#res proc),e=I.CALL{func=f,args=ref l}})
      end
-   
-    (* Evaluate loop bounds before binding loop variable *)
-    fun for (v,lo,hi,body) =
-     let val iv = I.SIMPLE v
-         val (s,l) = smap cvt state [lo,hi]
-         val (scp,s) = newVar s v
-         val ((bs,_,pgm),b) = cvt(s,body)
-
-         val assn = {e=I.ASSIGN{var=iv,exp=hd l},ty=T.UNIT}
-         val left = {e=I.VAR iv,ty=T.INT}
-         val test = {e=I.OP{left=left,right=(last l),oper=I.LT},ty=T.INT}
-         val incr = { e=I.OP{left=left,right={e=I.INT 1,ty=T.INT},oper=I.ADD}
-                    , ty=T.INT}
-         val body = {e=I.SEQ[b,incr],ty=T.UNIT}
-         val whl  = {e=I.WHILE{test=test,body=body},ty=T.UNIT}
-     in app (assertTy T.INT) (map #ty l);
-        assertTy T.UNIT (#ty b);
-        ((bs,scp,pgm),{e=I.SEQ[assn,whl],ty=T.UNIT})
-     end
-
-   fun while' (test,body) =
-    let val (s,l) = smap cvt state [test,body]
-        val (t,b) = (hd l,last l)
-    in assertTy T.INT  (#ty t);
-       assertTy T.UNIT (#ty b);
-       (s,{e=I.WHILE{test=t,body=b},ty=T.UNIT})
-    end
 
    fun if' (test,then',NONE) =
         let val (s,l) = smap cvt state [test,then']
@@ -237,7 +206,54 @@ fromAlist :: (sym * 'a) list -> 'a ST.map
            assertTy (#ty th) (#ty e);
            (s,{e=I.IFELSE{test=t,then'=th,else'=e},ty=(#ty e)})
         end
-    
+   
+   fun while' (test,body) =
+    let val (s,l) = smap cvt state [test,body]
+        val (t,b) = (hd l,last l)
+    in assertTy T.INT  (#ty t);
+       assertTy T.UNIT (#ty b);
+       (s,{e=I.WHILE{test=t,body=b},ty=T.UNIT})
+    end
+
+   (* Evaluate loop bounds before binding loop variable *)
+   fun for (v,lo,hi,body) =
+    let val scp = (#2 state)
+        val (s',l) = smap cvt state [lo,hi]
+        val (uv,s) = newVar s' v
+        val iv = I.SIMPLE uv
+        val ((bs,_,pgm),b) = cvt(s,body)
+
+        val assn = {e=I.ASSIGN{var=iv,exp=hd l},ty=T.UNIT}
+        val left = {e=I.VAR iv,ty=T.INT}
+        val test = {e=I.OP{left=left,right=(last l),oper=I.LT},ty=T.INT}
+        val incr = { e=I.OP{left=left,right={e=I.INT 1,ty=T.INT},oper=I.ADD}
+                   , ty=T.INT}
+        val body = {e=I.SEQ[b,incr],ty=T.UNIT}
+        val whl  = {e=I.WHILE{test=test,body=body},ty=T.UNIT}
+    in app (assertTy T.INT) (map #ty l);
+       assertTy T.UNIT (#ty b);
+       ((bs,scp,pgm),{e=I.SEQ[assn,whl],ty=T.UNIT})
+    end
+  
+   fun vdec (state,n,t,i) =
+    let val (s,i') = cvt (state,i)
+        val (u,s') = newVar s n
+    in (case t of SOME (t,_) => assertTy (getType t) (#ty i')
+                | NONE       => ());
+       (s',SOME{e=I.ASSIGN{var=I.SIMPLE u,exp=i'},ty=T.UNIT})
+    end
+
+   fun let' (decs,body) =
+    let fun r (st,dec) =
+         case dec
+          of A.VAR_DEC {name,typ,init,...} => vdec (st,name,typ,init)
+           | A.TYPE_DEC l  => (*tdec (st,l)*) TODO()
+           | A.FUN_DEC l  => (*fdec (st,l)*) TODO()
+        val (_,scp,_) = state
+        val (s,l) = smap r state decs
+    in ()
+    end
+
    in case exp
        of A.NIL => (state,{ty=T.NIL,e=I.NIL})
         | A.BREAK _ => (state,{ty=T.UNIT,e=I.BREAK})
