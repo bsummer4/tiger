@@ -9,7 +9,7 @@ structure IR = struct
 
  structure Type = struct
   datatype ty
-   = NIL | INT | STR | UNIT | REC of sym | ARR of sym | FUN of sym
+   = NIL | INT | STR | UNIT | REC of sym | ARR of sym 
 
   type arrays = ty ST.map
   type records = ty ST.map ST.map
