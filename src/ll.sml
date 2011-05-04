@@ -98,14 +98,10 @@ fun addFreeVar (vt:vars) cb (v,acc) =
   end
 
 fun findFreeVars (p as {blocks,vars,...}:program) =
-  let
-    val bods = getTigerBlocks(p)
-    fun wrap (id,bod,acc) =
   let val bods = getTigerBlocks(p)
       fun wrap (id,bod,acc) =
-      (id,ST.listItems (foldVars (addFreeVar vars id) ST.empty bod))::acc
-  in
-    ListPair.foldlEq wrap [] ((keys blocks),bods)
+       (id,ST.listItems (foldVars (addFreeVar vars id) ST.empty bod))::acc
+  in ListPair.foldlEq wrap [] ((keys blocks),bods)
   end
 
 (* rewrite call sites with unbound variables *)
