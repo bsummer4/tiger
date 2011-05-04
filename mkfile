@@ -1,5 +1,5 @@
 ex = `{cd ex; ls}
-progs = parse sa
+progs = sa # parse
 subdirs = src doc
 
 test = ${ex:%=testresults/%.parse}

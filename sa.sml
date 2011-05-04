@@ -23,7 +23,7 @@ fun go' f =
  in loop lexer
  end
 
-fun go () = go' (Sexp.printSexp o IRSexp.programSexp o Semantic.toIR)
+fun go () = go' (CIRPrint.printProg o ToC.IRtoCIR.convertIR o Semantic.toIR)
 
 ;
 go();

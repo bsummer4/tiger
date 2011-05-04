@@ -17,8 +17,7 @@ structure IR = struct
 
   fun compatible (a,b) =
    if a=b then true else case (a,b)
-    of (ARR _,NIL) => true
-     | (REC _,NIL) => true
+    of (REC _,NIL) => true
      | (NIL,ARR _) => true
      | (NIL,REC _) => true
      | _ => false

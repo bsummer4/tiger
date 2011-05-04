@@ -293,7 +293,7 @@ structure ToC = struct
    end
 
   fun convertIR (program:program) : CIR.program =
-   let val {main,blocks,procs,arrays,records,vars} = program
+   let val {main,blocks,procs,arrays,records,vars} = Preprocess.processIR program
        fun hack f (k,v) = f(k,program)
    in { main=(main:Symbol.symbol)
       , blocks=ST.mapi (hack convertBlock) blocks
