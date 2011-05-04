@@ -9,7 +9,7 @@ structure IR = struct
 
  structure Type = struct
   datatype ty
-   = NIL | INT | STR | UNIT | REC of sym | ARR of sym | FUN of sym
+   = NIL | INT | STR | UNIT | REC of sym | ARR of sym 
 
   type arrays = ty ST.map
   type records = ty ST.map ST.map
@@ -117,7 +117,6 @@ structure IRSexp = struct
     | T.REC s => sexp "type" [S.SYM "record", fix s]
     | T.ARR s => sexp "type" [S.SYM "array", fix s]
     | T.UNIT => sexp "type" [S.SYM "UNIT"]
-    | T.FUN _ => TODO()
 
   and texpSexp (te as {e,ty}) = sexp "texp" [typSexp ty, expSexp e]
 
