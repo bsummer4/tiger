@@ -57,8 +57,8 @@ structure Semantic = struct
   (* Convenience Functions *)
   fun bindType (b,{ty,var},p) name t = (b,{ty=ST.insert(ty,name,t),var=var},p)
   fun bindVal (b,{ty,var},p) name u = (b,{ty=ty,var=ST.insert(var,name,u)},p)
-  fun getType (_,{ty,var},_) sym = ST.lookup(ty,sym)
-  fun getVar (_,{ty,var},_) sym = ST.lookup(var,sym)
+  fun getType' (_,{ty,var},_) sym = ST.lookup(ty,sym)
+  fun getVar' (_,{ty,var},_) sym = ST.lookup(var,sym)
   type s=State.state
 
   datatype operClass = INT_OP | CMP_OP | EQ_OP
@@ -80,22 +80,27 @@ structure Semantic = struct
        if T.compatible(t,t') then () else assertTy' ts t'
 
   (* smap :: (s*'a -> s*'b) -> s -> 'a list -> (s,'b list) *)
-  (* Accumulate a new state while mapping over a list *)
-  (* TODO use fold? *)
-  fun smap f (s:s) al =
-   let fun r (a,b) [] = (a,rev b)
-         | r (s,x'l) (x::xs) =
-            case f (s,x) of (s',x') =>
-             r (s',x'::x'l) xs
-   in r (s,[]) al
-   end
+  fun smap f s xs =
+   case foldl (fn (x,(s,xs)) => case f(s,x) of (s',x') =>
+               (s',x'::xs))
+         (s,[]) xs
+    of (s',ys) => (s',rev ys)
 
   fun elementType (_,_,p:I.program) (T.ARR r) =
        ST.lookup(#arrays p,r)
     | elementType _ _ = raise TypeError
   fun fieldType (_,_,p:I.program)(T.REC r) n =
-       ST.lookup (ST.lookup(#records p,r),r)
+       ST.lookup (ST.lookup(#records p,r),n)
     | fieldType _ _ _ = raise TypeError
+
+  fun foobar s {ty,var} =
+   let val () = app print ["==== ", s, " ====", "\n"]
+       val () = app print ["---- ", "types" , " ----", "\n"]
+       val () = ST.appi (fn (k,v) => (print(Symbol.unique k);print "\n")) ty
+       val () = app print ["---- ", "values" , " ----", "\n"]
+       val () = ST.appi (fn (k,v) => (print(Symbol.unique k);print "\n")) var
+   in ()
+   end
 
 (*
  A couple of utillity functions for dealing with symbol->value maps. In
@@ -108,11 +113,12 @@ structure Semantic = struct
   fun fromAlist l = foldl (fn((k,v),t)=>ST.insert(t,k,v)) ST.empty l
   fun STcombine t t' = ST.mapi (fn (k,v) => (v,ST.lookup(t',k))) t
 
-  fun newVar (st:s as (bs,{ty,var},pgm)) (v,typ:T.ty) : sym*s =
+  fun newVar (st:s as (bs as {name,vars},{ty,var},pgm)) (v,typ:T.ty) : sym*s =
    let val unq = S.gensym v
        val pgm' = pgmWithVars pgm
                    (ST.insert (#vars pgm, unq, {typ=typ,block=(#name bs),ref'=false} ))
-       val st' = bindVal (bs,{ty=ty,var=var},pgm') v unq
+       val bs' = {name=name,vars=unq::vars}
+       val st' = bindVal (bs',{ty=ty,var=var},pgm') v unq
    in (unq,st')
    end
 
@@ -120,12 +126,12 @@ structure Semantic = struct
   (* replace new scope with stashed scope *)
   (* insert block into program, return new state *)
   fun mkFun ({name,args,result,body,pos}:A.fundec,s:s as (bs,{ty=tyscope,var=varscope},pgm as {procs,vars,...})) : s =
-   let val realName = getVar s name
+   let val realName = getVar' s name
        val realArgNames = map (S.gensym o #name) args
-       val realType = case result of SOME (ty,_) => getType s ty | NONE => T.UNIT
+       val realType = case result of SOME (ty,_) => getType' s ty | NONE => T.UNIT
        fun mkPgmVar (realName,arg:A.field,vars) =
         ST.insert( vars, realName
-                , {block=realName,typ=getType s (#typ arg), ref'=false} )
+                , {block=realName,typ=getType' s (#typ arg), ref'=false} )
        val vars' = ListPair.foldl mkPgmVar vars (realArgNames,args)
 
        val bsForBody = {name=realName,vars=[]}
@@ -146,7 +152,7 @@ structure Semantic = struct
   and cvt (state:s as (blocks,scope,program), exp:A.exp) : s*I.texp =
    let
 
-    val (getType,getVar) = (getType state,getVar state)
+    val (getType,getVar) = (getType' state,getVar' state)
 
     (* type scope = { ty:T.ty ST.map, var:sym ST.map }
        type blockState = { name:sym, vars:sym list }
@@ -162,8 +168,8 @@ structure Semantic = struct
          val var' = foldl mkBind var dl
          fun mkProcs ({name,result,args,...}:A.fundec,acc) =
           ST.insert(acc,ST.lookup(var',name),
-                   { res=(case result of SOME (t,_) => getType t | NONE => T.UNIT)
-                   , args=map (getType o #typ) args })
+                   { res=(case result of SOME (t,_) => getType' s t | NONE => T.UNIT)
+                   , args=map ((getType' s) o #typ) args })
          val pgm' = pgmWithProcs pgm (foldl mkProcs (#procs pgm) dl)
          val s' = (bs,{ty=ty,var=var'},pgm')
      in (foldl mkFun s' dl,NONE)
@@ -205,18 +211,18 @@ structure Semantic = struct
       | _ => raise Match
 
      (* mkTDefs :: sym -> {defs:ty ST, seen:unit ST} -> ty * ty ST *)
-    fun mkTDefs dm n {defs,seen} =
+    fun mkTDefs s dm n {defs,seen} =
      case (ST.find(seen,n),ST.find(dm,n))
-      of (NONE,_) => raise TypeLoop
-       | (_,NONE) => (getType n,defs)
+      of (SOME _,_) => raise TypeLoop
+       | (_,NONE) => (getType' s n,defs)
        | (_,SOME(A.NAME_TY (n',_))) =>
-          (case mkTDefs dm n' {seen=ST.insert(seen,n,()),defs=defs}
+          (case mkTDefs s dm n' {seen=ST.insert(seen,n,()),defs=defs}
             of (ty,defs') => (ty,ST.insert(defs',n,ty)))
        | (_,SOME(A.REC_TY _)) =>
           (case T.REC(S.gensym n) of x => (x,ST.insert(defs,n,x)))
        | (_,SOME(A.ARRAY_TY (n',_))) =>
           (case ( T.ARR(S.gensym n)
-                , mkTDefs dm n' {seen=ST.insert(seen,n,()),defs=defs})
+                , mkTDefs s dm n' {seen=ST.insert(seen,n,()),defs=defs})
             of (ty,(_,defs')) => (ty,ST.insert(defs',n,ty)))
 
     (* TODO use functional record update *)
@@ -227,23 +233,21 @@ structure Semantic = struct
                                  else ST.insert(t,name,ty)
          val dm = foldl safeInsert ST.empty dl
          val defs = ST.foldli
-          (fn (n,ty,a) => #2(mkTDefs dm n {defs=a,seen=ST.empty}))
+          (fn (n,ty,a) => #2(mkTDefs s dm n {defs=a,seen=ST.empty}))
           ST.empty dm
          val tyscope' = ST.unionWith (fn(a,_)=>a) (defs,tyscope)
+         val () = foobar "tdec" {var=varscope,ty=tyscope'}
          fun mkRecTy fl =
           fromAlist (map (fn {name,typ,pos} =>
                           (name,ST.lookup(tyscope',typ))) fl)
 
-         (* wtf *)
-         fun mkType n (p:I.program as {main=m,blocks=b,procs,arrays=a,records=r,vars=v})=
+         fun mkType n (p:I.program as {arrays=a,records=r,...})=
           case (ST.lookup(dm,n),ST.lookup(defs,n))
            of (A.NAME_TY _,_) => p
             | (A.REC_TY fl,T.REC tn) =>
-               {records=ST.insert(r,tn,mkRecTy fl),
-                main=m,blocks=b,procs=procs,arrays=a,vars=v}
+               pgmWithRecords p (ST.insert(r,tn,mkRecTy fl))
             | (A.ARRAY_TY(et,_),T.ARR tn) =>
-               {arrays=ST.insert(a,tn,ST.lookup(tyscope',et)),
-                main=m,blocks=b,procs=procs,records=r,vars=v}
+               pgmWithArrays p (ST.insert(a,tn,ST.lookup(tyscope',et)))
             | (A.REC_TY _,_) => ohwell()
             | (A.ARRAY_TY _,_) => ohwell()
          val p' = ST.foldli (fn(k,v,a)=>mkType k a) program defs
@@ -254,7 +258,8 @@ structure Semantic = struct
     fun vdec (state,n,t,i) =
      let val (s,i') = cvt (state,i)
          val (u,s') = newVar s (n,#ty i')
-     in (case t of SOME (t,_) => assertTy (getType t) (#ty i')
+         val () = foobar "vdec" (#2 s')
+     in (case t of SOME (t,_) => assertTy (getType' state t) (#ty i')
                  | NONE       => ());
         (s',SOME{e=I.ASSIGN{var=I.SIMPLE u,exp=i'},ty=T.UNIT})
      end
@@ -266,7 +271,7 @@ structure Semantic = struct
                     (s,{ty=ty,e=I.SEQ el})
 
     fun varExp v = case var v of (s,ty,v') => (s,{ty=ty,e=I.VAR v'})
-    and var (A.SIMPLE(n,_)) = let val n' = (case getVar n of x => (print "sup\n";x))
+    and var (A.SIMPLE(n,_)) = let val n' = getVar n
                                   val ty = #typ(ST.lookup(#vars program,n'))
                               in (state,ty,I.SIMPLE n') end
       | var (A.FIELD(v,n,_)) = let val (s,rty,v') = var v
