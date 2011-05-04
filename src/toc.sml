@@ -292,15 +292,31 @@ structure ToC = struct
    in {ty=irTypeCIR typ, isRef=ref'}
    end
 
-  fun addReturnsBlock (p as {res,...}) (b as {args,vars,body}) = case res
-   of CT.VOID_PTR => TODO()
-    | CT.INT => TODO()
-    | CT.INT => TODO()
-    | CT.STR => TODO()
-    | CT.VOID => TODO()
-    | CT.REC r => TODO()
-    | CT.ARR a => TODO()
-    
+  fun addReturnsStmts ty [] = (case ty
+       of CT.VOID => [CIR.RETURN (NONE)]
+        | CT.VOID_PTR => fuck()
+        | CT.INT => fuck()
+        | CT.STR => fuck()
+        | CT.REC _ => fuck()
+        | CT.ARR _ => fuck()
+        )
+    | addReturnsStmts ty (stmt::[]) = (case stmt
+       of CIR.IF {test,then',else'} =>
+           [CIR.IF { test=test
+                   , then'=addReturnsStmts ty then'
+                   , else'=addReturnsStmts ty else'}]
+        | CIR.ASSIGN _ => (stmt::(addReturnsStmts ty []))
+        | CIR.LABEL _=> (stmt::(addReturnsStmts ty []))
+        | CIR.GOTO _=> (stmt::(addReturnsStmts ty []))
+        | CIR.EXP {ty=typ,e} => 
+           if (typ=ty) then [CIR.RETURN (SOME{ty=typ,e=e})]
+                       else fuck()
+        )
+    | addReturnsStmts ty (stmt::stmts) =
+       (stmt::(addReturnsStmts ty stmts))
+
+  fun addReturnsBlock (p as {res,args=args'}) (b as {args,vars,body}) = 
+   {args=args,vars=vars,body=addReturnsStmts res body}
 
   fun addReturns p = 
    let val {main,blocks,procs,arrays,records,vars} = p
@@ -313,7 +329,7 @@ structure ToC = struct
       } 
    end
 
-  fun convertIR (program:program) : CIR.program =
+fun convertIR (program:program) : CIR.program =
    let val {main,blocks,procs,arrays,records,vars} = Preprocess.processIR program
        fun hack f (k,v) = f(k,program)
    in addReturns 

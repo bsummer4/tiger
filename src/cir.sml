@@ -27,7 +27,7 @@ structure CIR = struct
   = ASSIGN of {var:var, exp:texp}
   | IF of {test:texp, then':stmt list, else':stmt list}
   | EXP of texp
-  | RETURN of texp
+  | RETURN of texp option
   | LABEL of sym
   | GOTO of sym
 
@@ -277,7 +277,8 @@ structure CIRPrint (*:> CIR_PRINT *) = struct
        ; app (printStmt p) then'; print "}\n else {\n"; app (printStmt p) else'; print "}\n"
        )
     | EXP te => ((printTExp p) te; print ";\n")
-    | RETURN te => (print "return "; (printTExp p) te; print ";\n")
+    | RETURN (SOME te) => (print "return "; (printTExp p) te; print ";\n")
+    | RETURN NONE => print "return;\n"
     | LABEL s => app print [Sym.unique s, ":\n"]
     | GOTO s => app print ["goto ", Sym.unique s, ";\n"]
 
