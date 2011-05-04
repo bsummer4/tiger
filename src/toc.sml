@@ -292,10 +292,32 @@ structure ToC = struct
    in {ty=irTypeCIR typ, isRef=ref'}
    end
 
+  fun addReturnsBlock (p as {res,...}) (b as {args,vars,body}) = case res
+   of CT.VOID_PTR => TODO()
+    | CT.INT => TODO()
+    | CT.INT => TODO()
+    | CT.STR => TODO()
+    | CT.VOID => TODO()
+    | CT.REC r => TODO()
+    | CT.ARR a => TODO()
+    
+
+  fun addReturns p = 
+   let val {main,blocks,procs,arrays,records,vars} = p
+   in { main=main
+      , blocks=ST.mapi (fn (k,v) => addReturnsBlock (ST.lookup(procs,k)) v) blocks
+      , procs=procs
+      , arrays=arrays
+      , records=records
+      , vars=vars
+      } 
+   end
+
   fun convertIR (program:program) : CIR.program =
    let val {main,blocks,procs,arrays,records,vars} = Preprocess.processIR program
        fun hack f (k,v) = f(k,program)
-   in { main=(main:Symbol.symbol)
+   in addReturns 
+      { main=(main:Symbol.symbol)
       , blocks=ST.mapi (hack convertBlock) blocks
       , procs=ST.mapi (hack convertProc) procs
       , arrays=ST.map irTypeCIR arrays
