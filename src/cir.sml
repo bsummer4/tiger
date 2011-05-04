@@ -11,7 +11,7 @@ structure CIR = struct
    = VOID_PTR | INT | STR | VOID | REC of sym | ARR of sym
 
   type arrays = ty SymTable.map
-  type records = (sym * ty) list SymTable.map
+  type records = ty SymTable.map SymTable.map
   type procs = {res:ty,args:ty list} SymTable.map
 
   fun compatible (a,b) =
@@ -51,7 +51,10 @@ structure CIR = struct
 	on what type of variable it is. Note that `args' and `vars'
 	are disjoint sets and that the order of `args' is significant.
  *)
- type block = {args:sym list, vars:sym list, body:stmt list}
+ datatype block
+  = TIGER of {args:sym list, vars:sym list, body:stmt list}
+  | FOREIGN
+
  type vars = {ty:Type.ty,isRef:bool} SymTable.map
  type blocks = block SymTable.map
  type program =
@@ -187,12 +190,15 @@ structure CIRPrint (*:> CIR_PRINT *) = struct
    "}\n\n"
   ]
 
- fun decStruct _ s =
+ fun decRec _ s =
   let val s = Sym.unique s
    in app print ["struct ", s, ";\ntypedef struct ", s, " *", s, ";\n"]
   end
 
- val (decArr,decRec) = (decStruct,decStruct)
+ fun decArr _ s =
+  let val s = Sym.unique s
+   in app print ["struct ", s, ";\ntypedef struct ", s, " ", s, ";\n"]
+  end
 
 (*
  ====
@@ -217,22 +223,24 @@ structure CIRPrint (*:> CIR_PRINT *) = struct
    app print [typeStr ty, if isRef then "* " else " ", Sym.unique var]
 
  fun decProc (p:program as {procs,blocks,vars,...}) s =
-  let val ({args,...}, {res,...}) = (ST.lookup(blocks,s), ST.lookup(procs,s))
-  in app print [typeStr res, " ", Sym.unique s, "("]
-   ; appFmt (varDecPrint p) ", " ");\n" args
-  end
+  case (ST.lookup(blocks,s), ST.lookup(procs,s))
+   of (FOREIGN, _) => ()
+    | (TIGER{args,...},{res,...}) =>
+       ( app print [typeStr res, " ", Sym.unique s, "("]
+       ; appFmt (varDecPrint p) ", " ");\n" args
+       )
 
  fun defRec (p:program as {records,...}) s =
    case ST.lookup(records,s) of rec' =>
    ( app print ["struct ", Sym.unique s, " {"]
    ; appFmt (fn (name, ty) => app print [typeStr ty, " ", Sym.unique name])
-      "; " ";};\n" rec'
+      "; " ";};\n" (ST.listItemsi rec')
      (* ListPair.map id (#ty (#1 rec')) (#1 rec')) *)
    )
 
  fun defArr (p:program as {arrays,...}) s =
    case ST.lookup(arrays,s) of ty =>
-    app print ["struct ", Sym.unique s, " { ", typeStr ty, " *elmts;};\n"]
+    app print ["struct ", Sym.unique s, " { ", typeStr ty, " *elts;};\n"]
 
  fun decVar (p:program as {vars,...}) s =
   case ST.lookup(vars, s)
@@ -240,26 +248,32 @@ structure CIRPrint (*:> CIR_PRINT *) = struct
     | _ => fuck()
 
  fun defProc (p:program as {blocks,procs,...}) s =
-  case (ST.lookup(blocks,s), ST.lookup(procs,s)) of (b as {args,...},{res,...}) =>
-   ( app print [typeStr res, " ", Sym.unique s, " ("]
-   ; appFmt (varDecPrint p) "," ")\n" args
-   ; print "{\n"
-   ; app (decVar p) (#vars b)
-   ; app (printStmt p) (#body b)
-   ; print "}\n"
+  (case (ST.lookup(blocks,s), ST.lookup(procs,s))
+    of (FOREIGN,_) => ()
+        (* Maybe print out the standard library function from a string here. *)
+     | (TIGER b,{res,...}) =>
+        ( app print [typeStr res, " ", Sym.unique s, " ("]
+        ; appFmt (varDecPrint p) "," ")\n" (#args b)
+        ; print "{\n"
+        ; app (decVar p) (#vars b)
+        ; app (printStmt p) (#body b)
+        ; print "}\n"))
+
+ and amalloc (p:program) tyn (exp:texp) =
+  case ST.lookup(#arrays p, tyn) of ety =>
+   ( app print ["(", typeStr (Type.ARR tyn), "){malloc(sizeof(", typeStr ety, ")*("]
+   ; printTExp p exp
+   ; print "))}"
    )
 
- and malloc p ty exp =
-   ( app print
-      ["(", typeStr ty, ")malloc(sizeof(struct ", typeStr ty, ") * ("]
-   ; (case exp of NONE => print "1" | SOME x => (printTExp p) x)
-   ; print "))"
-   )
+ and rmalloc p ty =
+  app print
+   ["(", typeStr ty, ")malloc(sizeof(struct ", typeStr ty, "))"]
 
  and printVar p v = case v
     of SIMPLE s => app print
         ["(", if #isRef(ST.lookup(#vars p,s)) then "*" else "", Sym.unique s, ")"]
-     | FIELD (v',s) => (printVar p v'; print "."; print (Sym.unique s))
+     | FIELD (v',s) => (printVar p v'; print "->"; print (Sym.unique s))
      | INDEX (v',e) => (printVar p v'; print ".elts["; (printTExp p) e; print "]")
 
  and printStmt p stmt =
@@ -267,17 +281,17 @@ structure CIRPrint (*:> CIR_PRINT *) = struct
    of ASSIGN {var, exp} =>
      (case exp
        of {ty=Type.STR,...} =>
-           ( print "strdup(";  printVar p var; print ", "
+           ( printVar p var; print " = strdup("
            ; (printTExp p) exp; print ");\n"
            )
-        | _ => (print "="; (printTExp p) exp; print ";\n")
+        | _ => (printVar p var; print "="; (printTExp p) exp; print ";\n")
      )
     | IF {test, then', else'} =>
        ( print "if ("; (printTExp p) test; print ") {\n"
        ; app (printStmt p) then'; print "}\n else {\n"; app (printStmt p) else'; print "}\n"
        )
-    | EXP te => ((printTExp p) te; print ";\n")
-    | RETURN (SOME te) => (print "return "; (printTExp p) te; print ";\n")
+    | EXP te => (printTExp p te; print ";\n")
+    | RETURN (SOME te) => (print "return "; printTExp p te; print ";\n")
     | RETURN NONE => print "return;\n"
     | LABEL s => app print [Sym.unique s, ":\n"]
     | GOTO s => app print ["goto ", Sym.unique s, ";\n"]
@@ -286,19 +300,21 @@ structure CIRPrint (*:> CIR_PRINT *) = struct
  and printTExp p (te as {e, ty}) =
   let fun printArg (exp,var) =
        case (exp, isRef p var)
-        of ({ty,e=VAR(SIMPLE sv)},true) => if isRef p sv then printTExp p exp
-                                                  else (print "&"; printTExp p exp)
+        of ({ty,e=VAR(SIMPLE sv)},true) => (print "&"; printTExp p exp)
          | (_,false) => printTExp p exp
-         | (_,true) => shit()
+         | (_,true) => wtf "Can't pass a reference to an expression"
   in
    case e
-    of ARR size => malloc p ty (SOME size)
-     | REC => malloc p ty NONE
+    of ARR size => (case ty of (Type.ARR ety) => amalloc p ety size
+                             | _ => wtf "Semantic analysis didn't catch a type error")
+     | REC => rmalloc p ty
      | CALL {func, args} =>
-        let val {args=argVars,...} = ST.lookup(#blocks p,func)
-        in app print [Sym.unique func, "("]
-         ; appFmt printArg ", " ")" (ListPair.zipEq (args,argVars))
-        end
+        ( app print [Sym.unique func, "("]
+        ; case ST.lookup(#blocks p,func)
+           of FOREIGN => appFmt (printTExp p) ", " ")" args
+            | TIGER b =>
+               appFmt printArg ", " ")" (ListPair.zipEq (args,#args b))
+        )
      | INT i => print (Int.toString i)
      | STR str => app print ["\"", str, "\""]
      | OP {left, oper, right} =>
@@ -314,15 +330,15 @@ structure CIRPrint (*:> CIR_PRINT *) = struct
   end
 
  fun printProg (p as {main, procs, arrays, records,...}) =
-   ( print "#include <stdio.h>\n#include <stdlib.h>\n#include <string>\n"
-   ; printStdLib
+   ( print "#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n"
+   ; printStdLib()
    ; ST.appi ((decRec p) o #1) records
    ; ST.appi ((decArr p) o #1) arrays
    ; ST.appi ((decProc p) o #1) procs
    ; ST.appi ((defRec p) o #1) records
    ; ST.appi ((defArr p) o #1) arrays
    ; ST.appi ((defProc p) o #1) procs
-   ; app print ["int main () {\n", Sym.unique main]
-   ; print "()}\n"
+   ; app print ["int main () { ", Sym.unique main]
+   ; print "(); }\n"
    )
 end

@@ -66,8 +66,11 @@ fun foldVars f acc exp =
  end
 
 (* get blocks *)
-fun getBlocks ({blocks,...}:program) =
-  ST.foldl (fn (b,a) => (((#e o #body) b)::a)) [] blocks
+fun getTigerBlocks ({blocks,...}:program) =
+  ST.foldl (fn (b,a) =>
+             case b of FOREIGN => a
+                     | TIGER b => (((#e o #body) b)::a))
+   [] blocks
 
 (* get a list of call sites *)
 fun addCall acc (CALL {func,args}) =
@@ -78,7 +81,7 @@ fun addCall acc (CALL {func,args}) =
 
 fun createCallMap  (p:program) = let
   fun createCallMap' (exp,acc) = foldCalls addCall acc exp
-  in foldl createCallMap' ST.empty (getBlocks(p)) end
+  in foldl createCallMap' ST.empty (getTigerBlocks(p)) end
 
 (* find all unbound variables *)
 fun addFreeVar (vt:vars) cb acc v =
@@ -98,7 +101,7 @@ fun addFreeVar (vt:vars) cb acc v =
 
 fun findFreeVars (p as {blocks,vars,...}:program) =
   let
-    val bods = getBlocks(p)
+    val bods = getTigerBlocks(p)
     fun wrap (id,bod,acc) =
       (id,ST.listItems (foldVars (addFreeVar vars id) ST.empty bod))::acc
   in
@@ -114,5 +117,4 @@ fun rewriteCalls p =
   in
     app rewrite fvs
   end
-
 end

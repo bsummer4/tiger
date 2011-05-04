@@ -1,9 +1,10 @@
 structure Util = struct
- datatype swearWord = SHIT | FUCK | OH_WELL
+ datatype swearWord = SHIT | FUCK | OH_WELL | WTF of string
  exception SwearWordException of swearWord
  fun fuck() = raise SwearWordException FUCK
  fun shit() = raise SwearWordException SHIT
  fun ohwell() = raise SwearWordException OH_WELL
+ fun wtf s = raise SwearWordException (WTF s)
  val FAIL = Fail "This shouldn't ever happen"
 
  fun range n =

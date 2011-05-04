@@ -48,11 +48,9 @@ structure IR = struct
 	on what type of variable it is. Note that `args' and `vars'
 	are disjoint sets and that the order of `args' is significant.
  *)
- type block
-  = { args:sym list
-    , vars:sym list
-    , body:texp
-    }
+ datatype block
+  = TIGER of {args:sym list, vars:sym list, body:texp}
+  | FOREIGN
 
  type vars = {typ:Type.ty, block:sym, ref':bool} ST.map
  type blocks = block ST.map
@@ -66,9 +64,7 @@ structure IR = struct
   }
 end
 
-
 structure IRSexp = struct
- local
   open IR Util
   structure S = Sexp
   structure T = Type
@@ -119,12 +115,13 @@ structure IRSexp = struct
 
   and texpSexp (te as {e,ty}) = sexp "texp" [typSexp ty, expSexp e]
 
-  and blockSexp (s,(b as {args,vars,body})) =
-   sexp "block" [ fix s
-                , sexp "args" (map fix args)
-                , sexp "vars" (map fix vars)
-                , sexp "body" [texpSexp body]
-                ]
+  and blockSexp (s,FOREIGN) = sexp "foreign-function" [fix s]
+    | blockSexp (s,TIGER(b as {args,vars,body})) =
+       sexp "block" [ fix s
+                    , sexp "args" (map fix args)
+                    , sexp "vars" (map fix vars)
+                    , sexp "body" [texpSexp body]
+                    ]
 
   and procSexp (s,(p as {res,args})) =
    sexp (name s) [typSexp res, sexp "args" (map typSexp args)]
@@ -138,7 +135,6 @@ structure IRSexp = struct
   and varSexp' (s, (v as {typ,block:Symbol.symbol,ref'})) =
    sexp (name s) [typSexp typ, fix block, S.BOOL ref']
 
- in
   fun programSexp (p:program as {main,blocks,procs,arrays,records,vars}) =
    sexp "program" [fix main
                   , sexp "blocks" (map blockSexp (SymTable.listItemsi blocks))
@@ -148,7 +144,6 @@ structure IRSexp = struct
                   , sexp "vars" (map varSexp' (SymTable.listItemsi vars))
                   ]
 
- end
 end
 
 fun pgmWithMain {main=m,blocks=b,procs=p,arrays=a,records=r,vars=v} m' =
@@ -163,3 +158,13 @@ fun pgmWithRecords {main=m,blocks=b,procs=p,arrays=a,records=r,vars=v} r' =
  {main=m,blocks=b,procs=p,arrays=a,records=r',vars=v}
 fun pgmWithVars {main=m,blocks=b,procs=p,arrays=a,records=r,vars=v} v' =
  {main=m,blocks=b,procs=p,arrays=a,records=r,vars=v'}
+
+structure IRUtil = struct
+ open IR
+ structure T = Type
+ fun unit e = {ty=T.UNIT,e=e}
+ fun intType e = {ty=T.INT,e=e}
+ fun add a b = {ty=T.INT,e=OP{oper=ADD,left=a, right=b}}
+ fun inc v = unit(ASSIGN{var=v,exp=(add (intType (VAR v)) (intType (INT 1)))})
+ fun seq el = unit(SEQ(el))
+end
