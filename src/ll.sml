@@ -72,9 +72,9 @@ fun getBlocks ({blocks,...}:program) =
 (* get a list of call sites *)
 fun addCall acc (CALL {func,args}) =
   (case ST.find(acc,func)
-  of SOME sites => ST.insert(acc,func,args::sites)
-   | NONE       => ST.insert(acc,func,[args]))
-   | addCall acc _ = raise Match
+   of SOME sites => ST.insert(acc,func,args::sites)
+    | NONE       => ST.insert(acc,func,[args]))
+    | addCall acc _ = raise Match
 
 fun createCallMap  (p:program) = let
   fun createCallMap' (exp,acc) = foldCalls addCall acc exp
@@ -82,24 +82,21 @@ fun createCallMap  (p:program) = let
 
 (* find all unbound variables *)
 fun addFreeVar (vt:vars) cb acc v =
-  let
-    fun r v =
-      (case v
-      of SIMPLE s => s
-       | FIELD (v,s) => r v
-       | INDEX (v,e) => r v)
-    val s = r v
-    val t = {e=VAR(SIMPLE(s)),ty=(#typ (ST.lookup(vt,s)))}
-  in
-    case ST.find(vt,s)
-     of SOME {block=b,...} => if b = cb then acc else ST.insert(acc,s,t)
-      | NONE               => raise Match
+  let fun r v =
+       (case v
+        of SIMPLE s => s
+         | FIELD (v,s) => r v
+         | INDEX (v,e) => r v)
+      val s = r v
+      val t = {e=VAR(SIMPLE(s)),ty=(#typ (ST.lookup(vt,s)))}
+  in case ST.find(vt,s)
+      of SOME {block=b,...} => if b = cb then acc else ST.insert(acc,s,t)
+       | NONE               => raise Match
   end
 
 fun findFreeVars (p as {blocks,vars,...}:program) =
-  let
-    val bods = getBlocks(p)
-    fun wrap (id,bod,acc) =
+  let val bods = getBlocks(p)
+      fun wrap (id,bod,acc) =
       (id,ST.listItems (foldVars (addFreeVar vars id) ST.empty bod))::acc
   in
     ListPair.foldlEq wrap [] ((keys blocks),bods)
@@ -107,12 +104,11 @@ fun findFreeVars (p as {blocks,vars,...}:program) =
 
 (* rewrite call sites with unbound variables *)
 fun rewriteCalls p =
-  let
-    val cm  = createCallMap p
-    val fvs = findFreeVars p
-    fun rewrite (id,vs) = app (fn c => c := List.concat[vs,!c]) (ST.lookup(cm,id))
-  in
-    app rewrite fvs
+  let val cm  = createCallMap p
+      val fvs = findFreeVars p
+      fun rewrite (id,vs) = app (fn c => c := List.concat[vs,!c]) (ST.lookup(cm,id))
+  in app rewrite fvs
+   ; p
   end
 
 end
