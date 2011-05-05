@@ -48,9 +48,8 @@ structure IR = struct
 	on what type of variable it is. Note that `args' and `vars'
 	are disjoint sets and that the order of `args' is significant.
  *)
- datatype block
-  = TIGER of {args:sym list, vars:sym list, body:texp}
-  | FOREIGN
+ type tigerBlock = {args:sym list, vars:sym list, body:texp}
+ datatype block = TIGER of tigerBlock | FOREIGN
 
  type vars = {typ:Type.ty, block:sym, ref':bool} ST.map
  type blocks = block ST.map
@@ -167,4 +166,42 @@ structure IRUtil = struct
  fun add a b = {ty=T.INT,e=OP{oper=ADD,left=a, right=b}}
  fun inc v = unit(ASSIGN{var=v,exp=(add (intType (VAR v)) (intType (INT 1)))})
  fun seq el = unit(SEQ(el))
+ fun mapVar f (SIMPLE s) = f (SIMPLE s)
+   | mapVar f (FIELD(v,i)) = f (FIELD(f v,i))
+   | mapVar f (INDEX(v,texp)) = f (INDEX(f v,texp))
+
+ fun mapExp f texp =
+  let
+   fun varr v =
+    case v
+     of SIMPLE _ => v
+      | FIELD (v,i) => FIELD (varr v,i)
+      | INDEX (v,texp) => INDEX(varr v, expr texp)
+   and expr {ty,e} =
+    let val f = f o (fn e => {ty=ty,e=e}) in
+     case e
+      of BREAK => f e
+       | INT _ => f e
+       | NIL => f e
+       | STR _ => f e
+       | SEQ l => f (SEQ (map expr l))
+       | REC (SOME t) => f (REC (SOME (ST.map expr t)))
+       | REC NONE => f (REC NONE)
+       | CALL {args,func} =>
+        ( args := (map expr (!args))
+        ; f (CALL{args=args,func=func})
+        )
+       | ARR {init=SOME i,size} => f(ARR{init=SOME (expr i), size=expr size})
+       | ARR {init=NONE,size} => f(ARR{init=NONE, size=expr size})
+       | ASSIGN {var,exp} => f(ASSIGN{var=varr var, exp=expr exp})
+       | IF {test,then'} => f(IF{test=expr test, then'=expr then'})
+       | IFELSE {test,then',else'} => 
+          f(IFELSE{ test=expr test, then'=expr then', else'=expr else'})
+       | OP {left,right,oper} => 
+          f(OP{left=expr left, oper=oper, right=expr right})
+       | VAR vd => f (VAR (varr vd))
+       | WHILE {test,body} => f(WHILE{test=expr test, body=expr body})
+    end
+  in expr texp
+  end
 end

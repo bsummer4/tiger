@@ -22,3 +22,7 @@
 
 :TODO: Some style stuff
 	- IR.#ref' vs CIR.#isRef
+
+:TODO: Combine blocks and procs in the program
+
+:TODO: Semantic analysis should handle invalid numbers of arguments

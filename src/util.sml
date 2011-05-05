@@ -7,6 +7,8 @@ structure Util = struct
  fun wtf s = raise SwearWordException (WTF s)
  val FAIL = Fail "This shouldn't ever happen"
 
+ val debug = false
+
  fun range n =
   let fun r sofar i = if i<0 then sofar else r (i::sofar) (i-1)
   in r [] (n-1) end
@@ -43,8 +45,15 @@ structure Util = struct
 
  fun TODO() = raise Fail "Not Implemented"
 
+ fun trace s f a =
+  let val () = app print ["(",s,"{"]
+      val r =  f a
+      val () = print "})"
+  in r end
+
  fun inc (num : int ref) = num := !num + 1
  fun dec (num : int ref) = num := !num - 1
 
  fun id x = x
 end
+

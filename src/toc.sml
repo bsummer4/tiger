@@ -91,7 +91,9 @@ structure ToC = struct
           | _ => if okExp exp then te else fix(unit((ASSIGN{var=var, exp=(fix exp)}))))
 
      | CALL {func, args=(ref args)} =>
-        let val tmps = map (fn{ty,e}=>(ty,e,tmpVar ty)) args
+        let fun hack {ty,e=VAR (v as (SIMPLE _))} = (ty,VAR v,v)
+              | hack {ty,e} = (ty,e,tmpVar ty)
+            val tmps = map hack args
             val args = map (fn(ty,_,v)=>{ty=ty,e=VAR v}) tmps
             val setup = map (fn(ty,e,v)=>fix(unit(ASSIGN{var=v,exp={e=e,ty=ty}})))
                          tmps

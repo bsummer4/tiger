@@ -23,7 +23,11 @@ fun go' f =
  in loop lexer
  end
 
-fun go () = go' (CIRPrint.printProg o ToC.IRtoCIR.convertIR o LL.rewriteCalls o Semantic.toIR)
+fun go () = go' ( CIRPrint.printProg
+                o ToC.IRtoCIR.convertIR
+                o LL.lift
+                o Semantic.toIR
+                )
 
 ;
 go();

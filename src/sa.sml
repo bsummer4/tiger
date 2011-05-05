@@ -129,13 +129,15 @@ structure Semantic = struct
    let val realName = getVar' s name
        val realArgNames = map (S.gensym o #name) args
        val realType = case result of SOME (ty,_) => getType' s ty | NONE => T.UNIT
-       fun mkPgmVar (realName,arg:A.field,vars) =
-        ST.insert( vars, realName
-                , {block=realName,typ=getType' s (#typ arg), ref'=false} )
+       fun mkPgmVar (uniqueVarName,arg:A.field,vars) =
+        ST.insert ( vars, uniqueVarName
+                  , {block=realName,typ=getType' s (#typ arg), ref'=false}
+                  )
        val vars' = ListPair.foldl mkPgmVar vars (realArgNames,args)
 
        val bsForBody = {name=realName,vars=[]}
-       fun bindVar (realName,arg:A.field,scp) = ST.insert(scp,#name arg,realName)
+       fun bindVar (uniqueVarName,arg:A.field,scp) =
+        ST.insert(scp,#name arg,uniqueVarName)
        val varForBody = ListPair.foldl bindVar varscope (realArgNames,args)
        val stateForBody = (bsForBody,{ty=tyscope,var=varForBody},pgmWithVars pgm vars')
 
@@ -390,12 +392,6 @@ structure Semantic = struct
   val stdScope : State.scope = {ty=fromAlist stdTypes,var=fromAlist (map(fn(a,b)=>(a,a)) stdLib)}
   val stdProgram : I.program = pgmWithProcs State.emptyProgram (fromAlist stdLib)
   val stdProgram : I.program = pgmWithBlocks stdProgram (fromAlist (map (fn (s,v) => (s,I.FOREIGN)) stdLib))
-
-  fun trace s f a =
-   let val () = app print ["(",s,"{"]
-       val r =  f a
-       val () = print "})"
-   in r end
 
   fun inStdLib s =
    ( (*print(Symbol.unique s);*)
