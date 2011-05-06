@@ -26,3 +26,6 @@
 :TODO: Combine blocks and procs in the program
 
 :TODO: Semantic analysis should handle invalid numbers of arguments
+
+:TODO: Handle mutual recursion of nested functions. Currently, lambda lifting
+       loops infinitely for the same reason regular recursion did.

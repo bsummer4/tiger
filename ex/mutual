@@ -1,0 +1,11 @@
+let 
+  var N := 20
+  function h():int =
+    let
+      function f():int = N*g() 
+	  function g():int = N*f() 
+    in g(10) 
+	end
+in
+  h()
+end
