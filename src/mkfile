@@ -11,5 +11,9 @@ src =\
  util.sml sym.sml sexp.sml ast.sml ir.sml cir.sml ll.sml sa.sml\
  parseutils.sml tiger.grm.sig tiger.grm.sml tiger.lex.sml
 
-all:V:
+all:V: $src
+clean:V:
+	rm -f tiger.lex
+
 <../ml.mk
+<../m4.mk

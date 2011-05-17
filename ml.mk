@@ -1,8 +1,9 @@
 # You must define $module $src $mlb and $cm before importing this.
 
 all:V: $module.mlb $module.cm $src
-clean:V:
-	rm -rf *.grm.* *.lex.* .cm *.mlb *.cm
+clean:V: mlclean
+mlclean:V:
+	rm -rf *.grm.sml *.grm.desc *.grm.sig *.lex.sml .cm *.mlb *.cm
 
 %.grm.desc %.grm.sig %.grm.sml: %.grm
 	mlyacc $stem.grm
