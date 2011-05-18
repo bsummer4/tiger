@@ -1,5 +1,5 @@
 ex = `{cd ex; ls}
-progs = parse sa
+progs = parse sa lex
 subdirs = src doc
 
 test = ${ex:%=testresults/%.parse}
@@ -8,7 +8,7 @@ exe = ${progs:%=o.%}
 all:V: $exe
 test:V: $test
 clean:V:
-	rm -rf o.* testresults tmp.mlb
+	rm -rf o.* testresults tmp.mlb lex.sml
 	for x in $subdirs
 	do cd $x; mk clean; cd ..
 	done
@@ -26,3 +26,5 @@ o.%: src %.sml
 	$stem.sml
 	!
 	mlton -output $target tmp.mlb
+
+<m4.mk
