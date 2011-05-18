@@ -13,9 +13,14 @@ fun error (e,l:int,_) =
   ["char ",Int.toString l,": ",e,"\n"]
 
 fun parseInt p s = Tokens.Integer(valOf(Int.fromString s),p,p+size s)
-fun fixStr s = if size s<2 then fuck() else substring (s,1,size s-2)
+fun fixStr s =
+ ( app (fn c => case c of #"\n" => inc linenum | _ => ())
+    (explode s)
+ ; if size s<2 then fuck() else substring (s,1,size s-2)
+ )
 
-define(`KW',`"$1" => Tokens.$2 (stp,endp)')
+define(`KW',`
+ "$1" => Tokens.$2 (stp,endp)')
 fun checkpunc word stp endp = case word
   of KW(`,',Comma)  | KW(`:',Colon) | KW(`;',Semi)    | KW(`(',Lparen)
    | KW(`)',Rparen) | KW(`[',Lbrak) | KW(`]',Rbrak)   | KW(`{',Lbrace)
@@ -53,10 +58,10 @@ str  = {q}[^\n"]*{q};
 <INITIAL>{num}   => (parseInt yypos yytext);
 <INITIAL>{str}   => (Tokens.String(fixStr yytext,yypos,yypos+size yytext));
 <INITIAL> "/*"   => (YYBEGIN COMMENT; comment:=1; lex());
-<COMMENT> "/*"   => (comment:=(!comment)-1; lex());
+<COMMENT> "/*"   => (inc comment; lex());
 <COMMENT> [^*/]* => (lex());
 <COMMENT> "*"    => (lex());
-<COMMENT> "*/"   => ( comment:=(!comment)-1
+<COMMENT> "*/"   => ( dec comment
                     ; if 0=(!comment) then YYBEGIN INITIAL else ()
                     ; lex()
                     );
