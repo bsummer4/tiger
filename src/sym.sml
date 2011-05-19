@@ -70,8 +70,15 @@ structure Symbol = struct
 end
 
 structure SymTable:> SYM_TABLE = struct
+ open Util
  open IntBinaryMap
  structure Symbol = Symbol
+ fun lookup' (t,k) =
+  ( if debug then List.app print ["(lookup ", Symbol.unique k, ")"]
+             else ()
+  ; lookup(t,k)
+  )
+ val lookup = lookup'
 end
 
 structure Symbol = SymTable.Symbol

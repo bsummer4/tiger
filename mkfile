@@ -1,5 +1,6 @@
 ex = `{cd ex; ls}
-progs = parse sa lex
+progs = parse sa lex tc
+progs = tc # parse
 subdirs = src doc
 
 test = ${ex:%=testresults/%.parse}
@@ -16,9 +17,9 @@ clean:V:
 src:V:
 	cd src; mk all
 
-testresults/%.parse: o.sa ex/%
+testresults/%.parse: o.tc ex/%
 	mkdir -p testresults
-	./o.sa <ex/$stem >testresults/$stem.parse
+	./o.tc <ex/$stem >testresults/$stem.parse
 
 o.%: src %.sml
 	cat >tmp.mlb <<!

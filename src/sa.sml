@@ -129,20 +129,22 @@ structure Semantic = struct
    let val realName = getVar' s name
        val realArgNames = map (S.gensym o #name) args
        val realType = case result of SOME (ty,_) => getType' s ty | NONE => T.UNIT
-       fun mkPgmVar (realName,arg:A.field,vars) =
-        ST.insert( vars, realName
-                , {block=realName,typ=getType' s (#typ arg), ref'=false} )
+       fun mkPgmVar (uniqueVarName,arg:A.field,vars) =
+        ST.insert ( vars, uniqueVarName
+                  , {block=realName,typ=getType' s (#typ arg), ref'=false}
+                  )
        val vars' = ListPair.foldl mkPgmVar vars (realArgNames,args)
 
        val bsForBody = {name=realName,vars=[]}
-       fun bindVar (realName,arg:A.field,scp) = ST.insert(scp,#name arg,realName)
+       fun bindVar (uniqueVarName,arg:A.field,scp) =
+        ST.insert(scp,#name arg,uniqueVarName)
        val varForBody = ListPair.foldl bindVar varscope (realArgNames,args)
        val stateForBody = (bsForBody,{ty=tyscope,var=varForBody},pgmWithVars pgm vars')
 
        val ((bs',_,pgm'),l as {e,ty}) = cvt(stateForBody,body)
        val pgm'' = pgmWithBlocks pgm'
                     (ST.insert( #blocks pgm', realName
-                              , {args=realArgNames,vars=(#vars bs'),body=l} ))
+                              , I.TIGER{args=realArgNames,vars=(#vars bs'),body=l} ))
 
    in assertTy ty realType
     ; (bs,{ty=tyscope,var=varscope},pgm'')
@@ -236,7 +238,7 @@ structure Semantic = struct
           (fn (n,ty,a) => #2(mkTDefs s dm n {defs=a,seen=ST.empty}))
           ST.empty dm
          val tyscope' = ST.unionWith (fn(a,_)=>a) (defs,tyscope)
-         val () = foobar "tdec" {var=varscope,ty=tyscope'}
+         (*val () = foobar "tdec" {var=varscope,ty=tyscope'}*)
          fun mkRecTy fl =
           fromAlist (map (fn {name,typ,pos} =>
                           (name,ST.lookup(tyscope',typ))) fl)
@@ -258,7 +260,7 @@ structure Semantic = struct
     fun vdec (state,n,t,i) =
      let val (s,i') = cvt (state,i)
          val (u,s') = newVar s (n,#ty i')
-         val () = foobar "vdec" (#2 s')
+         (*val () = foobar "vdec" (#2 s')*)
      in (case t of SOME (t,_) => assertTy (getType' state t) (#ty i')
                  | NONE       => ());
         (s',SOME{e=I.ASSIGN{var=I.SIMPLE u,exp=i'},ty=T.UNIT})
@@ -321,16 +323,16 @@ structure Semantic = struct
 
     (* Evaluate loop bounds before binding loop variable *)
     fun for (v,lo,hi,body) =
-     let val scp = (#2 state)
+     let open IRUtil
+         val scp = (#2 state)
          val (s',l) = smap cvt state [lo,hi]
          val (uv,s) = newVar s' (v,T.INT)
-         val iv = I.SIMPLE uv
+         val loopVar = I.SIMPLE uv
          val ((bs,_,pgm),b) = cvt(s,body)
-         val assn = {e=I.ASSIGN{var=iv,exp=hd l},ty=T.UNIT}
-         val left = {e=I.VAR iv,ty=T.INT}
-         val test = {e=I.OP{left=left,right=(last l),oper=I.LT},ty=T.INT}
-         val incr = { e=I.OP{left=left,right={e=I.INT 1,ty=T.INT},oper=I.ADD}
-                    , ty=T.INT}
+         val assn = {e=I.ASSIGN{var=loopVar,exp=hd l},ty=T.UNIT}
+         val left = {e=I.VAR loopVar,ty=T.INT}
+         val test = {e=I.OP{left=left,right=(last l),oper=I.LE},ty=T.INT}
+         val incr = inc loopVar
          val body = {e=I.SEQ[b,incr],ty=T.UNIT}
          val whl  = {e=I.WHILE{test=test,body=body},ty=T.UNIT}
      in app (assertTy T.INT) (map #ty l);
@@ -385,9 +387,19 @@ structure Semantic = struct
                  , (mk "concat"   ,{res=T.STR ,args=[T.STR,T.STR]})
                  , (mk "not"      ,{res=T.INT ,args=[T.INT]})
                  , (mk "exit"     ,{res=T.UNIT,args=[T.INT]})
+                 , (mk "TopLevel" ,{res=T.UNIT,args=[]})
                  ]
   val stdScope : State.scope = {ty=fromAlist stdTypes,var=fromAlist (map(fn(a,b)=>(a,a)) stdLib)}
   val stdProgram : I.program = pgmWithProcs State.emptyProgram (fromAlist stdLib)
+  val stdProgram : I.program = pgmWithBlocks stdProgram (fromAlist (map (fn (s,v) => (s,I.FOREIGN)) stdLib))
+
+  fun inStdLib s =
+   ( (*print(Symbol.unique s);*)
+    ST.inDomain(#procs stdProgram,s)
+      andalso s<>(mk "TopLevel")
+   )
+
+   (*val inStdLib = trace "inStdLib" inStdLib*)
  end
 
  (* create basic state, bind stdlib *)
@@ -397,9 +409,10 @@ structure Semantic = struct
       val scp = stdScope
       val pgm = stdProgram
       val ((bs',_,pgm'),body) = cvt((bs,scp,pgm),e)
+      val body' = {ty=T.UNIT,e=I.SEQ[body,{ty=T.UNIT,e=I.SEQ[]}]}
       val pgm'' = pgmWithBlocks pgm'
                    (ST.insert( #blocks pgm', #name bs'
-                             , {args=[],vars=(#vars bs'),body=body} ))
+                             , I.TIGER {args=[],vars=(#vars bs'),body=body'} ))
   in pgmWithMain pgm'' (S.mk "TopLevel")
   end
 end

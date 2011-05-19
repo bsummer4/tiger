@@ -13,7 +13,6 @@
 	unavailable from outside.
 
 :TODO: Some Tiger Issues
-	- Nil cannot be used with arrays
 	- Funky tiger strings need to be handled in the parser.
 	- Nil can only be used in a context where it's record type can
 	  be determined.
@@ -23,10 +22,10 @@
 
 :TODO: Some style stuff
 	- IR.#ref' vs CIR.#isRef
-	- Functional record update
-	- Fold in {src/ll.sml}
 
-:TODO: Lexer bug
-	`4*5' works, but `4 * 5' doesn't
+:TODO: Combine blocks and procs in the program
 
-:TODO: IR -> CIR
+:TODO: Semantic analysis should handle invalid numbers of arguments
+
+:TODO: Handle mutual recursion of nested functions. Currently, lambda lifting
+       loops infinitely for the same reason regular recursion did.

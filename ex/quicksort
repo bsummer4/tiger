@@ -1,0 +1,71 @@
+let
+ type intArray = array of int
+ type Array = {elts:intArray, size:int}
+  
+ function randomArray(size:int, seed:int):Array =
+  let function mod(a:int,n:int):int =
+       ( while (a >= n) do a:=a-n; a)
+      function next(n:int):int = mod(3*n+7, 91)
+      var x:=Array{elts=intArray[size] of 0, size=size}
+      var rand:=next(seed)
+  in for i:=0 to size-1 do 
+      ( print("For loop at "); printi(i); print("\n")
+      ; x.elts[i]:=rand
+      ; rand := next(rand)
+      ; print("It went... OK\n")
+      )
+   ; x
+  end
+
+ function printArray(x:Array) =
+  ( for i:=0 to x.size-1 do 
+     (printi(x.elts[i]); print(" "))
+  ; print("\n")  
+  )
+ 
+ function quicksort(x:Array,left:int,right:int):Array = 
+  let
+
+      function swap(x:Array,index1:int,index2:int) = 
+       let var tmp:=x.elts[index1] 
+       in print("swap: "); printi(index1); print(" ")
+                         ; printi(index2); print("\n")
+        ; x.elts[index1] := x.elts[index2]
+        ; x.elts[index2] := tmp
+        ; print("that went ok\n")
+       end
+
+      function partition(x:Array,left:int,right:int,pivotIndex:int):int =
+       ( print("partition: "); printi(left); print(" "); printi(right); print(" "); printi(pivotIndex); print("\n")
+       ; let var pivotValue := x.elts[pivotIndex]
+             var storeIndex := left
+         in for i:=left to right-1 do
+             if (x.elts[i] <= pivotValue) then
+              ( swap(x,i,storeIndex)
+              ; storeIndex := storeIndex + 1
+              )
+          ; swap (x,storeIndex,right)
+          ; print("That was fun\n")
+          ; storeIndex
+         end
+       )
+
+      var pivotNewIndex := 0
+      var pivotIndex := 0
+
+  in if (right > left) then
+      ( pivotIndex := (right - left) / 2
+      ; pivotNewIndex := partition(x,left,right,pivotIndex)
+      )
+   ; quicksort(x,left,pivotNewIndex - 1)
+   ; quicksort(x,pivotNewIndex + 1, right)
+  end
+
+ var x := randomArray(10,1)
+in print("Unsorted array:\n")
+ ; printArray(x)
+ ; print("\n") 
+ ; quicksort(x,0,9)
+ ; print("Sorted array:\n")
+ ; printArray(x)
+end
