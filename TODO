@@ -17,8 +17,23 @@
 	- Nil can only be used in a context where it's record type can
 	  be determined.
 
+:TODO: There should only be two executables
+	Right now there is an executable for each phase of the compiler.
+	Instead we should produce only two. One that contains just the
+	compiler, and the other that creates a series of traces files. One
+	per pass.
+
+:TODO: More useful error messages
+	- Handle more lexing errors
+	- Output more useful error messages when lexing fails.
+	- Same with parsing
+	- Semantic analysis errors should include position information.
+
 :TODO: Write a makefile rule to run the each-file-on-a-line tests
-	cat ex/small_valid | (i=0; while read x; do echo "%% $x"; echo $x | ./o.parse; done) | less
+	| cat ex/small_valid |
+	| 	(i=0; while read x; do echo "%% $x"; echo $x |
+	| 	./o.parse; done) |
+	| 	less
 
 :TODO: Some style stuff
 	- IR.#ref' vs CIR.#isRef
@@ -26,6 +41,19 @@
 :TODO: Combine blocks and procs in the program
 
 :TODO: Semantic analysis should handle invalid numbers of arguments
+:TODO: Handle mutual recursion of nested functions.
+	Currently, lambda lifting loops infinitely for the same reason
+	regular recursion did.
 
-:TODO: Handle mutual recursion of nested functions. Currently, lambda lifting
-       loops infinitely for the same reason regular recursion did.
+:TODO: Functional Record Update
+	- Define functions to do function record update for all large
+	  records.
+
+:TODO: Clean up the build
+	- Use a single makefile instead of using two
+	- Find an alternate way of handling m4 and pre-processing
+
+:TODO: Replace Tiny Examples With Code to Generate Random Examples
+	- Write code to randomly generate all representations.
+	- Come up with invariants
+	- Use QCheck
