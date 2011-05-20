@@ -5,6 +5,6 @@ prog=$1
 shift
 
 if [ 0 = $# ]
-then while x=$(line); do echo "$x" | $prog; done
+then while x=$(line); do echo "$x" | $prog || true; done
 else echo "$*" | $prog
 fi

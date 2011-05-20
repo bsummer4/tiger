@@ -9,8 +9,8 @@
 
 	| sml src/tiger.cm '$/ml-yacc-lib.cm' parse.sml
 
-	The ml-yacc `.cm' file is included in `src/tiger.cm', but it seems to be
-	unavailable from outside.
+	The ml-yacc `.cm' file is included in `src/tiger.cm', but it
+	seems to be unavailable from outside.
 
 :TODO: Some Tiger Issues
 	- Funky tiger strings need to be handled in the parser.
@@ -39,7 +39,6 @@
 	- IR.#ref' vs CIR.#isRef
 
 :TODO: Combine blocks and procs in the program
-
 :TODO: Semantic analysis should handle invalid numbers of arguments
 :TODO: Handle mutual recursion of nested functions.
 	Currently, lambda lifting loops infinitely for the same reason
