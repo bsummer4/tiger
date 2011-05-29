@@ -52,6 +52,7 @@
 	- Use a single makefile instead of using two
 	- Find an alternate way of handling m4 and pre-processing
 
+# :TODO: Use arbitrary-precision integers internally.
 # :TODO: Replace Tiny Examples With Code to Generate Random Examples
 	- Write code to randomly generate all representations.
 	- Come up with invariants
