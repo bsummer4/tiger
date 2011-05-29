@@ -23,6 +23,7 @@ testresults/%.parse: o.tc ex/%
 o.%: src %.sml
 	cat >tmp.mlb <<!
 	src/tiger.mlb
+	\$(SML_LIB)/qcheck/qcheck.mlb
 	$stem.sml
 	!
 	mlton -output $target tmp.mlb

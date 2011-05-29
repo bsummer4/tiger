@@ -1,28 +1,73 @@
-structure Lex = TigerLexFun(structure Tokens = struct
- type svalue = int
- type pos = int
- type ('a,'b) token = string
+open TextIO
+fun println x = (print x; print "\n")
+fun intersperse t [] = []
+  | intersperse t (x::xs) = rev (foldl (fn(e,a)=>(e::t::a)) [x] xs)
+fun join xs = String.concat (intersperse " " xs)
+fun stringLex s =
+ let val ss = ref (Substring.full s)
+     fun get n =
+      case Substring.getc (!ss)
+       of NONE => ""
+        | SOME (x,ss') => (ss := ss'; str x)
+ in get
+ end
 
- fun String (v,_,_) = "String\t\"" ^ v ^ "\""
- fun Integer (v,_,_) = "Integer\t" ^ (Int.toString v)
- fun Id (v,_,_) = "Id\t" ^ v
-
- define(`V',`
-  fun $1 (_,_) = "$1"')
+define(`toks',`
  V(Eof) V(Comma) V(Colon) V(Semi) V(Lparen) V(Rparen) V(Lbrak) V(Rbrak)
  V(Lbrace) V(Rbrace) V(Dot) V(Add) V(Sub) V(Mul) V(Div) V(Eq) V(Neq)
  V(Lt) V(Le) V(Gt) V(Ge) V(And) V(Or) V(Assign) V(Array) V(If) V(Then)
  V(Else) V(While) V(For) V(To) V(Do) V(Let) V(In) V(End) V(Of) V(Break)
- V(Nil) V(Fun) V(Var) V(Type) V(Umin)
+ V(Nil) V(Fun) V(Var) V(Type) V(Umin)')
+
+structure T = struct
+ define(`V',`
+  | $1')
+ datatype token
+  = String of string
+  | Id of string
+  | Integer of int
+  toks
+ undefine(`V')
+end
+
+structure Lex = TigerLexFun(structure Tokens = struct
+ type svalue = int
+ type pos = int
+ type ('a,'b) token = T.token
+
+ fun String (v,_,_) = T.String v
+ fun Integer (v,_,_) = T.Integer v
+ fun Id (n,_,_) = T.Id n
+
+ define(`V',`
+  fun $1 (_,_) = T.$1')
+ toks
  undefine(`V')
 end)
 
-open TextIO
-fun println x = (print x; print "\n")
-fun get _ = input stdIn
-val lexer = Lex.makeLexer get
-fun loop () =
- case lexer () of t =>
-  (println t; if t="Eof" then () else loop())
+fun tokList str =
+ let val lex = Lex.makeLexer(stringLex str)
+     fun loop a =
+      case lex() of T.Eof => rev a | t => loop(t::a)
+ in loop []
+ end
 
-;loop ();
+val tokens =
+ case (CommandLine.name(),CommandLine.arguments())
+  of (_,x::xs) => SOME(x::xs)
+   | (_,[]) => NONE
+
+open QCheck infix ==>
+
+(*
+	- :TODO: Negative numbers
+*)
+fun toString n = if n>=0 then Int.toString n else Int.toString(~ n)
+val int = (Gen.Int.int, SOME toString)
+fun intTest x =
+ case tokList(toString x)
+  of [T.Integer n] => (n=x orelse n=(~x))
+   | _ => false
+
+;
+checkGen int ("lex an int", pred intTest);
