@@ -59,15 +59,17 @@ val tokens =
 
 open QCheck infix ==>
 
-(*
-	- :TODO: Negative numbers
-*)
-fun toString n = if n>=0 then Int.toString n else Int.toString(~ n)
+fun toString n =
+ (if n>=0 then Int.toString n else "-"^toString(~n)
+ ) handle General.Overflow => "OVERFLOW"
+
 val int = (Gen.Int.int, SOME toString)
 fun intTest x =
- case tokList(toString x)
-  of [T.Integer n] => (n=x orelse n=(~x))
-   | _ => false
+ (if x<0 then raise Fail "intTest is not defined for negative integers."
+  else case tokList(toString x)
+        of [T.Integer n] => n=x
+         | _ => false
+ ) handle General.Overflow => false
 
 ;
-checkGen int ("lex an int", pred intTest);
+checkGen int ("integers", (fn x=>(x>=0)) ==> intTest);
