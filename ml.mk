@@ -3,7 +3,7 @@
 all:V: $module.mlb $module.cm $src
 clean:V: mlclean
 mlclean:V:
-	rm -rf *.grm.sml *.grm.desc *.grm.sig *.lex.sml .cm *.mlb *.cm
+	rm -rf .cm *.mlb *.cm
 
 %.grm.desc %.grm.sig %.grm.sml: %.grm
 	mlyacc $stem.grm

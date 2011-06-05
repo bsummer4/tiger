@@ -8,7 +8,7 @@ exe = ${progs:%=o.%}
 all:V: $exe
 test:V: $test
 clean:V:
-	rm -rf o.* testresults tmp.mlb lex.sml
+	rm -rf o.* testresults tmp.mlb
 	for x in $subdirs
 	do cd $x; mk clean; cd ..
 	done
@@ -20,12 +20,13 @@ testresults/%.parse: o.tc ex/%
 	mkdir -p testresults
 	./o.tc <ex/$stem >testresults/$stem.parse
 
-o.%: src %.sml
+o.%: src %.E.sml
 	cat >tmp.mlb <<!
 	src/tiger.mlb
 	\$(SML_LIB)/qcheck/qcheck.mlb
-	$stem.sml
+	$stem.E.sml
 	!
 	mlton -output $target tmp.mlb
 
+<ml.mk
 <m4.mk

@@ -1,6 +1,14 @@
-# TODO Use regexp patterns
-%.sml: %.sml.m4
-	m4 -s $stem.sml.m4 | ./fixlines >$stem.sml
-tiger.lex: tiger.lex.m4
+clean: m4clean
+m4clean:V:
+	rm -f *.E.*
+
+%.E.sml: %.sml
+	m4 -s $stem.sml | ./fixlines >$stem.E.sml
+
+tiger.E.lex: tiger.lex
 	stem=tiger
-	m4 $stem.lex.m4 >$stem.lex
+	m4 $stem.lex >$stem.E.lex
+
+tiger.E.grm: tiger.grm
+	stem=tiger
+	m4 $stem.grm >$stem.E.grm
