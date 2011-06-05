@@ -50,6 +50,7 @@
 
 # :TODO: Clean up the build
 	- Use a single makefile instead of using two.
+	- There are some redundant rules that shouldn't be necessary.
 
 # :TODO: Use arbitrary-precision integers internally.
 # :TODO: Replace Tiny Examples With Code to Generate Random Examples
