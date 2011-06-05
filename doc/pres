@@ -11,8 +11,8 @@ Introduction
 - What is tiger?
 	- Small, imperative language with
 	  simple, ALGOL-like syntax
-	- Educational language created for
-     teaching compiler design.
+	- Educational language created for teaching compiler design.
+
 - Why Tiger?
 	- Specification already finalized
 	- General purpose programming
@@ -27,6 +27,7 @@ Tiger Overview
 - There are four basic types:
 	- Primitive: `int' and `string'
 	- Compound: arrays and records
+
 - The standard library includes only 11
   functions for I/O and string handling
 
@@ -40,6 +41,7 @@ Tiger Overview (cont'd)
 	- An expression sequence is an
 	  expression that evaluates to the
 	  last subexpression
+
 - But... not all expressions return a
   value.
 	- including loops, procedures, empty
@@ -52,27 +54,25 @@ Tiger Overview (cont'd)
   variables, and functions.
 - Lexically scoped.
 - Lets may be nested
-
-	let type iarr = array of int
-	    var a := iarr[5] of 3
-	    var a_1 := 0
-	in a_1 := a[1];
-	   print(a_1)
-	end
+	| let type iarr = array of int
+	|     var a := iarr[5] of 3
+	|     var a_1 := 0
+	| in a_1 := a[1];
+	|    print(a_1)
+	| end
 
 %%
 Tiger Overview (cont'd)
 
 Free variables, sequences, and loops:
-
-	let var x := 0
-	    function inc_x (y:int) =
-	      x := (x+y)
-	in for i := 0 to 10 do
-	     (inc_x(i); printi(x); print(" "))
-	end
-
-	OUTPUT: 0 1 3 6 10 15 21 28 36 45 55
+	| let var x := 0
+	|     function inc_x (y:int) =
+	|       x := (x+y)
+	| in for i := 0 to 10 do
+	|      (inc_x(i); printi(x); print(" "))
+	| end
+	|
+	| OUTPUT: 0 1 3 6 10 15 21 28 36 45 55
 
 %%
 The Problem
@@ -115,9 +115,11 @@ Semantic Analysis
   validate code
 - Everything is given a unique name
 	- Preserves lexical scoping
+
 - Let expressions coalesced into blocks
 	- A block is a function's activation record
 	- Collect all variable declaration
+
 - Blocks form the central unit of the IR
 
 %%
@@ -143,9 +145,9 @@ C-ification
 %%
 Tools Used
 
-- SML/NJ -- debugging
-- Mlton -- compilation
+- sml/nj -- debugging
+- mlton -- compilation
 - mllex, mlyacc -- lexing and parsing
-- Make -- Build system
-- Vim -- Development
-- Git -- Code sharing, integration
+- mk -- Build system
+- vim -- Development
+- git -- Code sharing, integration
