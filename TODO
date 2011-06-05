@@ -1,15 +1,13 @@
 # :TODO: Issue with SML/NJ modules:
 	When the parser.sml driver is in a different module from the
 	parser code we get errors in SML/NJ:
-
-	| parser.sml:2.2-2.15 Error: unbound structure: LrParser
+		| parser.sml:2.2-2.15 Error: unbound structure: LrParser
 
 	This can be resolved by adding '$/ml-yacc-lib.cm' to the argument list
-	when invoking sml/nj.
+	when invoking sml/nj:
+		| mk lib.cm; sml lib.cm '$/ml-yacc-lib.cm' parse.sml
 
-	| sml src/tiger.cm '$/ml-yacc-lib.cm' parse.sml
-
-	The ml-yacc `.cm' file is included in `src/tiger.cm', but it
+	The ml-yacc `.cm' file is included in `lib.cm', but it
 	seems to be unavailable from outside.
 
 # :TODO: Some Tiger Issues
@@ -49,7 +47,6 @@
 	  records.
 
 # :TODO: Clean up the build
-	- Use a single makefile instead of using two.
 	- There are some redundant rules that shouldn't be necessary.
 
 # :TODO: Use arbitrary-precision integers internally.

@@ -1,6 +1,0 @@
-#!/usr/bin/awk -f
-function linedec(n) { print "(*#line " n " " file "*)" }
-function savefile() { file=$3 }
-/^#line [0-9]+$/ { linedec($2); next }
-/^#line [0-9]+ ".*"$/ { savefile(); linedec($2); next }
-{ print $0 }
